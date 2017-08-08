@@ -1299,6 +1299,7 @@ class Commit(object):
                 "percent_steem_dollars": options.get("percent_steem_dollars", 100) * STEEMIT_1_PERCENT,
                 "allow_votes": options.get("allow_votes", True),
                 "allow_curation_rewards": options.get("allow_curation_rewards", True),
+                "extensions": options.get("extensions", [])
             }
         )
         return self.finalizeOp(op, account["name"], "posting")
