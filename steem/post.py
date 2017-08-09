@@ -3,6 +3,7 @@ import logging
 import re
 from datetime import datetime
 
+from dateutil.parser import parse
 from funcy.colls import walk_values, get_in
 from funcy.flow import silent
 from funcy.seqs import flatten
@@ -180,7 +181,7 @@ class Post(dict):
     def time_elapsed(self):
         """Return a timedelta on how old the post is.
         """
-        return datetime.utcnow() - self['created']
+        return datetime.utcnow() - parse(self['created'])
 
     def is_main_post(self):
         """ Retuns True if main post, and False if this is a comment (reply).
