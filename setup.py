@@ -14,9 +14,9 @@ def readme_file():
 
 # yapf: disable
 setup(
-    name='steem',
-    version='0.18.9',
-    description='Official Python STEEM Library',
+    name='steem-python',
+    version='0.0.1',
+    description='Fork of official python STEEM library',
     long_description=open(readme_file()).read(),
     packages=find_packages(exclude=['scripts']),
     setup_requires=['pytest-runner'],
