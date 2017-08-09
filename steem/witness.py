@@ -1,4 +1,4 @@
-from .instance import shared_steemd_instance
+from steem.instance import shared_steemd_instance
 
 from steembase.exceptions import WitnessDoesNotExistsException
 

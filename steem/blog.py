@@ -2,10 +2,10 @@ from funcy.flow import silent
 from funcy.funcs import complement
 from funcy.seqs import take, first
 
-from .account import Account
-from .instance import shared_steemd_instance
-from .post import Post
-from .utils import is_comment
+from steem.account import Account
+from steem.instance import shared_steemd_instance
+from steem.post import Post
+from steem.utils import is_comment
 
 
 class Blog:

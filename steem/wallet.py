@@ -1,6 +1,7 @@
 import logging
 import os
 
+from steem.account import Account
 from steem.instance import shared_steemd_instance
 from steembase import bip38
 from steembase.account import PrivateKey
@@ -8,8 +9,6 @@ from steembase.exceptions import (
     InvalidWifError,
     WalletExists
 )
-
-from .account import Account
 
 log = logging.getLogger(__name__)
 

@@ -1,5 +1,7 @@
 import logging
 
+from steem.account import Account
+from steem.instance import shared_steemd_instance
 from steem.wallet import Wallet
 from steembase.account import PrivateKey
 from steembase.exceptions import (
@@ -9,9 +11,6 @@ from steembase.exceptions import (
 )
 from steembase.operations import Operation
 from steembase.transactions import SignedTransaction, fmt_time_from_now, get_block_params
-
-from .account import Account
-from .instance import shared_steemd_instance
 
 log = logging.getLogger(__name__)
 

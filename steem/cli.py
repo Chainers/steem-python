@@ -6,19 +6,19 @@ import re
 import sys
 
 import pkg_resources
-import steem as stm
 from prettytable import PrettyTable
-from steembase.storage import configStorage
 
-from .account import Account
-from .amount import Amount
-from .block import Block
-from .blockchain import Blockchain
-from .dex import Dex
-from .instance import shared_steemd_instance
-from .post import Post
-from .utils import construct_identifier, strfage
-from .witness import Witness
+import steem as stm
+from steem.account import Account
+from steem.amount import Amount
+from steem.block import Block
+from steem.blockchain import Blockchain
+from steem.dex import Dex
+from steem.instance import shared_steemd_instance
+from steem.post import Post
+from steem.utils import construct_identifier, strfage
+from steem.witness import Witness
+from steembase.storage import configStorage
 
 availableConfigurationKeys = [
     "default_account",
