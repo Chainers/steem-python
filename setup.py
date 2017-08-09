@@ -15,7 +15,7 @@ def readme_file():
 setup(
     name='steep-steem',
     version='0.0.1',
-    author='SteepShot team',
+    author='@steepshot',
     author_email='steepshot.org@gmai.com',
     description='Fork of official python STEEM library',
     license=open('LICENSE').read(),
@@ -23,6 +23,7 @@ setup(
     url='https://github.com/Chainers/steem-python',
     long_description=open(readme_file()).read(),
     packages=find_packages(exclude=['scripts']),
+    data_files=[('', ['LICENSE'])],
     setup_requires=['pytest-runner'],
     tests_require=['pytest',
                    'pep8',
@@ -52,6 +53,7 @@ setup(
         'diff-match-patch',
         'prettytable',
         'voluptuous',
+        "python-dateutil",
     ],
     entry_points={
         'console_scripts': [
