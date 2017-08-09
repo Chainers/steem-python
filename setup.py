@@ -18,7 +18,7 @@ setup(
     author='SteepShot team',
     author_email='steepshot.org@gmai.com',
     description='Fork of official python STEEM library',
-    license='MIT',
+    license=open('LICENSE').read(),
     keywords='steem steepshot',
     url='https://github.com/Chainers/steem-python',
     long_description=open(readme_file()).read(),
