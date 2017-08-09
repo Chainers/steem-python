@@ -5,7 +5,7 @@ import sys
 from setuptools import find_packages
 from setuptools import setup
 
-assert sys.version_info[0] == 3 and sys.version_info[1] >= 5, "steep-python requires Python 3.5 or newer"
+assert sys.version_info[0] == 3 and sys.version_info[1] >= 5, "steep-steem requires Python 3.5 or newer"
 
 
 def readme_file():
@@ -13,13 +13,13 @@ def readme_file():
 
 
 setup(
-    name='steep-python',
+    name='steep-steem',
     version='0.0.1',
     author='SteepShot team',
     author_email='steepshot.org@gmai.com',
     description='Fork of official python STEEM library',
     license=open('LICENSE').read(),
-    keywords='steem steepshot',
+    keywords='steem steep-steem',
     url='https://github.com/Chainers/steem-python',
     long_description=open(readme_file()).read(),
     packages=find_packages(exclude=['scripts']),
