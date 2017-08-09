@@ -5,7 +5,7 @@
 You can install `steep-steem` with `pip`:
 
 ```
-pip install -U steep=steem
+pip install -U steep-steem
 ```
 
 ## Notice
