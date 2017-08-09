@@ -1,19 +1,12 @@
-# Official Python STEEM Library
-`steem-python` is the official STEEM library for Python. It comes with a BIP38 encrypted wallet and a practical CLI utility called `steempy`.
+# Fork of official Python STEEM Library
+`steep-steem` is the fork of official STEEM library for Python. It comes with a BIP38 encrypted wallet and a practical CLI utility called `steeppy`.
 
 ## Installation
-You can install `steem-python` with `pip`:
+You can install `steep-steem` with `pip`:
 
 ```
-pip install -U steem
+pip install -U steep=steem
 ```
-
-## Documentation
-Documentation is available at **http://steem.readthedocs.io**
-
-## TODO
-* more unit-tests
-* 100% documentation coverage
 
 ## Notice
 This library is under *active development*. Use at own discretion.

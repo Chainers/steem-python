@@ -55,7 +55,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'steempy=steem.cli:legacy',
-            'piston=steem.cli:legacy',
+            'steeppy=steep.cli:legacy',
+            'steep-piston=steep.cli:legacy',
         ]
     })
