@@ -2,10 +2,10 @@ import hashlib
 import struct
 from binascii import hexlify, unhexlify
 
-from .operations import Memo
+from steepbase.operations import Memo
 from Crypto.Cipher import AES
-from .base58 import base58encode, base58decode
-from .account import PrivateKey, PublicKey
+from steepbase.base58 import base58encode, base58decode
+from steepbase.account import PrivateKey, PublicKey
 
 default_prefix = "STM"
 
@@ -77,7 +77,7 @@ def encode_memo(priv, pub, nonce, message, **kwargs):
         :rtype: hex
 
     """
-    from steembase import transactions
+    from steepbase import transactions
     shared_secret = get_shared_secret(priv, pub)
     aes, check = init_aes(shared_secret, nonce)
     raw = bytes(message, 'utf8')

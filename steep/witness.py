@@ -1,6 +1,6 @@
-from steem.instance import shared_steemd_instance
+from steep.instance import shared_steemd_instance
 
-from steembase.exceptions import WitnessDoesNotExistsException
+from steepbase.exceptions import WitnessDoesNotExistsException
 
 
 class Witness(dict):

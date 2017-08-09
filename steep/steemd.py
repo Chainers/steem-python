@@ -4,15 +4,15 @@ from typing import List, Any, Union, Set
 
 from funcy.seqs import first
 
-from steem.block import Block
-from steem.blockchain import Blockchain
-from steem.post import Post
-from steem.utils import resolve_identifier
-from steembase.chains import known_chains
-from steembase.http_client import HttpClient
-from steembase.storage import configStorage
-from steembase.transactions import SignedTransaction
-from steembase.types import PointInTime
+from steep.block import Block
+from steep.blockchain import Blockchain
+from steep.post import Post
+from steep.utils import resolve_identifier
+from steepbase.chains import known_chains
+from steepbase.http_client import HttpClient
+from steepbase.storage import configStorage
+from steepbase.transactions import SignedTransaction
+from steepbase.types import PointInTime
 
 logger = logging.getLogger(__name__)
 

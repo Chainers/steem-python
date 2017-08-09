@@ -1,8 +1,8 @@
 import random
 import unittest
 
-from steembase import memo as Memo
-from steembase.account import PrivateKey
+from steepbase import memo as Memo
+from steepbase.account import PrivateKey
 
 
 class Testcases(unittest.TestCase):

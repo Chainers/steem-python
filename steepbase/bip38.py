@@ -2,8 +2,8 @@ import hashlib
 import logging
 from binascii import hexlify, unhexlify
 
-from .account import PrivateKey
-from .base58 import Base58, base58decode
+from steepbase.account import PrivateKey
+from steepbase.base58 import Base58, base58decode
 
 log = logging.getLogger(__name__)
 

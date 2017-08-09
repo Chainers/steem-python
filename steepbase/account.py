@@ -5,8 +5,8 @@ from binascii import hexlify, unhexlify
 
 import ecdsa
 
-from .base58 import ripemd160, Base58
-from .dictionary import words as BrainKeyDictionary
+from steepbase.base58 import ripemd160, Base58
+from steepbase.dictionary import words as BrainKeyDictionary
 
 
 class PasswordKey(object):

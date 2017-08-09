@@ -1,16 +1,16 @@
 import logging
 
-from steem.account import Account
-from steem.instance import shared_steemd_instance
-from steem.wallet import Wallet
-from steembase.account import PrivateKey
-from steembase.exceptions import (
+from steep.account import Account
+from steep.instance import shared_steemd_instance
+from steep.wallet import Wallet
+from steepbase.account import PrivateKey
+from steepbase.exceptions import (
     InsufficientAuthorityError,
     MissingKeyError,
     InvalidKeyFormat
 )
-from steembase.operations import Operation
-from steembase.transactions import SignedTransaction, fmt_time_from_now, get_block_params
+from steepbase.operations import Operation
+from steepbase.transactions import SignedTransaction, fmt_time_from_now, get_block_params
 
 log = logging.getLogger(__name__)
 

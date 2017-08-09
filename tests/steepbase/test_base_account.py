@@ -1,6 +1,6 @@
 import unittest
-from steembase.base58 import Base58
-from steembase.account import BrainKey, Address, PublicKey, PrivateKey, PasswordKey
+from steepbase.base58 import Base58
+from steepbase.account import BrainKey, Address, PublicKey, PrivateKey, PasswordKey
 
 
 class Testcases(unittest.TestCase):

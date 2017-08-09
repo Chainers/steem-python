@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from steem import *
-from steembase import *
+from steep import *
+from steepbase import *
 
 
 # pylint: disable=unused-import,unused-variable

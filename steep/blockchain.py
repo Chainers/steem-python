@@ -4,8 +4,8 @@ import time
 import warnings
 from typing import Union
 
-from steem.instance import shared_steemd_instance
-from steem.utils import parse_time
+from steep.instance import shared_steemd_instance
+from steep.utils import parse_time
 
 
 class Blockchain(object):

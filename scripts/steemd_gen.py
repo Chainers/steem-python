@@ -4,7 +4,7 @@ from pprint import pprint
 
 from funcy.colls import where, pluck
 from funcy.seqs import first, distinct, flatten
-from steem import Steem
+from steep import Steem
 
 # todo
 # "get_expiring_vesting_delegations": [('author', 'str'), ('from_time', 'object'), ('limit', 'int')],  # ?

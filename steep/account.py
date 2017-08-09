@@ -8,12 +8,12 @@ from funcy.seqs import take
 from funcy.simple_funcs import rpartial
 from toolz import dissoc
 
-from steem.amount import Amount
-from steem.blockchain import Blockchain
-from steem.converter import Converter
-from steem.instance import shared_steemd_instance
-from steem.utils import parse_time, json_expand
-from steembase.exceptions import AccountDoesNotExistsException
+from steep.amount import Amount
+from steep.blockchain import Blockchain
+from steep.converter import Converter
+from steep.instance import shared_steemd_instance
+from steep.utils import parse_time, json_expand
+from steepbase.exceptions import AccountDoesNotExistsException
 
 
 class Account(dict):

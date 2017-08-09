@@ -1,5 +1,5 @@
 from funcy.colls import pluck
-from steem.steemd import Steemd
+from steep.steemd import Steemd
 
 
 def test_ensured_block_ranges():

@@ -1,4 +1,4 @@
-from steem.account import Account
+from steep.account import Account
 
 
 def test_history():

@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 
 import certifi
 import urllib3
-from steembase.exceptions import RPCError
+from steepbase.exceptions import RPCError
 from urllib3.connection import HTTPConnection
 from urllib3.exceptions import MaxRetryError, ReadTimeoutError, ProtocolError
 

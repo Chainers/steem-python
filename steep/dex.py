@@ -1,9 +1,9 @@
 import random
 
-from steem.amount import Amount
-from steem.instance import shared_steemd_instance
-from steembase import transactions, operations
-from steembase.storage import configStorage as config
+from steep.amount import Amount
+from steep.instance import shared_steemd_instance
+from steepbase import transactions, operations
+from steepbase.storage import configStorage as config
 
 
 class Dex(object):

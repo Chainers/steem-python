@@ -1,11 +1,11 @@
 import logging
 import os
 
-from steem.account import Account
-from steem.instance import shared_steemd_instance
-from steembase import bip38
-from steembase.account import PrivateKey
-from steembase.exceptions import (
+from steep.account import Account
+from steep.instance import shared_steemd_instance
+from steepbase import bip38
+from steepbase.account import PrivateKey
+from steepbase.exceptions import (
     InvalidWifError,
     WalletExists
 )
@@ -50,7 +50,7 @@ class Wallet:
     keyMap = {}  # type:wif pairs to force certain keys
 
     def __init__(self, steemd_instance=None, **kwargs):
-        from steembase.storage import configStorage
+        from steepbase.storage import configStorage
         self.configStorage = configStorage
 
         # RPC
@@ -63,7 +63,7 @@ class Wallet:
             """ If no keys are provided manually we load the SQLite
                 keyStorage
             """
-            from steembase.storage import (keyStorage,
+            from steepbase.storage import (keyStorage,
                                            MasterPassword)
             self.MasterPassword = MasterPassword
             self.keyStorage = keyStorage

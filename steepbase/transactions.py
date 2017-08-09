@@ -8,10 +8,10 @@ from datetime import datetime
 
 import ecdsa
 
-from .account import PrivateKey, PublicKey
-from .chains import known_chains
-from .operations import Operation, GrapheneObject, isArgsThisClass
-from .types import (
+from steepbase.account import PrivateKey, PublicKey
+from steepbase.chains import known_chains
+from steepbase.operations import Operation, GrapheneObject, isArgsThisClass
+from steepbase.types import (
     Array,
     Set,
     Signature,

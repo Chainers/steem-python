@@ -1,4 +1,4 @@
-from steem.amount import Amount
+from steep.amount import Amount
 
 
 def test_amount_init():

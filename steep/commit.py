@@ -9,21 +9,21 @@ from funcy.colls import none
 from funcy.flow import silent
 from funcy.seqs import first
 
-from steem.account import Account
-from steem.amount import Amount
-from steem.converter import Converter
-from steem.instance import shared_steemd_instance
-from steem.transactionbuilder import TransactionBuilder
-from steem.utils import derive_permlink, resolve_identifier, fmt_time_string, keep_in_dict
-from steem.wallet import Wallet
-from steembase import memo
-from steembase import operations
-from steembase.account import PrivateKey, PublicKey
-from steembase.exceptions import (
+from steep.account import Account
+from steep.amount import Amount
+from steep.converter import Converter
+from steep.instance import shared_steemd_instance
+from steep.transactionbuilder import TransactionBuilder
+from steep.utils import derive_permlink, resolve_identifier, fmt_time_string, keep_in_dict
+from steep.wallet import Wallet
+from steepbase import memo
+from steepbase import operations
+from steepbase.account import PrivateKey, PublicKey
+from steepbase.exceptions import (
     AccountExistsException,
     MissingKeyError,
 )
-from steembase.storage import configStorage
+from steepbase.storage import configStorage
 
 log = logging.getLogger(__name__)
 
@@ -381,7 +381,7 @@ class Commit(object):
         """ Create new account in Steem
 
             The brainkey/password can be used to recover all generated keys (see
-            `steembase.account` for more details.
+            `steepbase.account` for more details.
 
             By default, this call will use ``default_account`` to
             register a new name ``account_name`` with all keys being
@@ -463,7 +463,7 @@ class Commit(object):
             raise AccountExistsException
 
         " Generate new keys from password"
-        from steembase.account import PasswordKey, PublicKey
+        from steepbase.account import PasswordKey, PublicKey
         if password:
             posting_key = PasswordKey(account_name, password, role="posting")
             active_key = PasswordKey(account_name, password, role="active")
@@ -579,7 +579,7 @@ class Commit(object):
         assert asset in ['STEEM', 'SBD']
 
         if memo and memo[0] == "#":
-            from steembase import memo as Memo
+            from steepbase import memo as Memo
             memo_wif = self.wallet.getMemoKeyForAccount(account)
             if not memo_wif:
                 raise MissingKeyError("Memo key for %s missing!" % account)

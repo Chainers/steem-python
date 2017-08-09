@@ -1,6 +1,6 @@
-from steem.instance import shared_steemd_instance
-from steem.utils import parse_time
-from steembase.exceptions import BlockDoesNotExistsException
+from steep.instance import shared_steemd_instance
+from steep.utils import parse_time
+from steepbase.exceptions import BlockDoesNotExistsException
 
 
 class Block(dict):

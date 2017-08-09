@@ -4,9 +4,9 @@ import re
 import struct
 from collections import OrderedDict
 
-from .account import PublicKey
-from .operationids import operations
-from .types import (
+from steepbase.account import PublicKey
+from steepbase.operationids import operations
+from steepbase.types import (
     Int16, Uint16, Uint32, Uint64,
     String, Bytes, Array, PointInTime, Bool,
     Optional, Map, Id, JsonObj, StaticVariant)

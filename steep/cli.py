@@ -8,17 +8,17 @@ import sys
 import pkg_resources
 from prettytable import PrettyTable
 
-import steem as stm
-from steem.account import Account
-from steem.amount import Amount
-from steem.block import Block
-from steem.blockchain import Blockchain
-from steem.dex import Dex
-from steem.instance import shared_steemd_instance
-from steem.post import Post
-from steem.utils import construct_identifier, strfage
-from steem.witness import Witness
-from steembase.storage import configStorage
+from steep.steem import Steem
+from steep.account import Account
+from steep.amount import Amount
+from steep.block import Block
+from steep.blockchain import Blockchain
+from steep.dex import Dex
+from steep.instance import shared_steemd_instance
+from steep.post import Post
+from steep.utils import construct_identifier, strfage
+from steep.witness import Witness
+from steepbase.storage import configStorage
 
 availableConfigurationKeys = [
     "default_account",
@@ -928,7 +928,7 @@ def legacy():
     if args.no_wallet:
         options.update({"wif": []})
 
-    steem = stm.Steem(no_broadcast=args.no_broadcast, **options)
+    steem = Steem(no_broadcast=args.no_broadcast, **options)
 
     if args.command == "set":
         if (args.key in ["default_account"] and
@@ -1224,7 +1224,7 @@ def legacy():
 
     elif args.command == "allow":
         if not args.foreign_account:
-            from steembase.account import PasswordKey
+            from steepbase.account import PasswordKey
             pwd = get_terminal(text="Password for Key Derivation: ", confirm=True)
             args.foreign_account = format(PasswordKey(args.account, pwd, args.permission).get_public(), "STM")
         print_json(steem.commit.allow(
@@ -1246,7 +1246,7 @@ def legacy():
     elif args.command == "updatememokey":
         if not args.key:
             # Loop until both match
-            from steembase.account import PasswordKey
+            from steepbase.account import PasswordKey
             pw = get_terminal(text="Password for Memo Key: ", confirm=True, allowedempty=False)
             memo_key = PasswordKey(args.account, pw, "memo")
             args.key = format(memo_key.get_public_key(), "STM")
@@ -1282,7 +1282,7 @@ def legacy():
         ))
 
     elif args.command == "importaccount":
-        from steembase.account import PasswordKey
+        from steepbase.account import PasswordKey
         import getpass
         password = getpass.getpass("Account Passphrase: ")
         account = Account(args.account)
@@ -1414,7 +1414,7 @@ def legacy():
         ))
 
     elif args.command == "setprofile":
-        from .profile import Profile
+        from steep.profile import Profile
         keys = []
         values = []
         if args.pair:
@@ -1442,7 +1442,7 @@ def legacy():
         ))
 
     elif args.command == "delprofile":
-        from .profile import Profile
+        from steep.profile import Profile
         account = Account(args.account)
         account["json_metadata"] = Profile(account["json_metadata"])
 

@@ -8,16 +8,16 @@ from funcy.colls import walk_values, get_in
 from funcy.flow import silent
 from funcy.seqs import flatten
 
-from steem.amount import Amount
-from steem.commit import Commit
-from steem.instance import shared_steemd_instance
-from steem.utils import construct_identifier, resolve_identifier
-from steem.utils import parse_time, remove_from_dict
-from steembase.exceptions import (
+from steep.amount import Amount
+from steep.commit import Commit
+from steep.instance import shared_steemd_instance
+from steep.utils import construct_identifier, resolve_identifier
+from steep.utils import parse_time, remove_from_dict
+from steepbase.exceptions import (
     PostDoesNotExist,
     VotingInvalidOnArchivedPost,
 )
-from steembase.operations import CommentOptions
+from steepbase.operations import CommentOptions
 
 log = logging.getLogger(__name__)
 
