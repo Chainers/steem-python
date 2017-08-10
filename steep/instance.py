@@ -1,4 +1,4 @@
-from steep import steemd
+import steep as stm
 
 _shared_steemd_instance = None
 
@@ -16,7 +16,7 @@ def shared_steemd_instance():
     """
     global _shared_steemd_instance
     if not _shared_steemd_instance:
-        _shared_steemd_instance = steemd.Steemd(nodes=get_config_node_list())
+        _shared_steemd_instance = stm.steemd.Steemd(nodes=get_config_node_list())
     return _shared_steemd_instance
 
 
