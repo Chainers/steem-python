@@ -16,7 +16,7 @@ setup(
     name='steep-steem',
     version='0.0.1',
     author='@steepshot',
-    author_email='steepshot.org@gmai.com',
+    author_email='steepshot.org@gmail.com',
     description='Fork of official python STEEM library',
     license=open('LICENSE').read(),
     keywords='steem steep-steem',
