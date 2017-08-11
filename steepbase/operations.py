@@ -68,7 +68,7 @@ class Operation:
     @staticmethod
     def get_class(class_name: str):
         """ Given name of a class from `operations`, return real class. """
-        module = importlib.import_module('steembase.operations')
+        module = importlib.import_module('steepbase.operations')
         return getattr(module, class_name)
 
     def __bytes__(self):
