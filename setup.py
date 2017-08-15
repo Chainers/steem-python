@@ -18,13 +18,13 @@ def license_file():
 
 setup(
     name='steep-steem',
-    version='0.0.2',
+    version='0.0.3',
     author='@steepshot',
     author_email='steepshot.org@gmail.com',
     description='Fork of official python STEEM library',
     license=open(license_file()).read(),
     keywords='steem steep-steem',
-    url='https://github.com/Chainers/steem-python',
+    url='https://github.com/Chainers/steep-steem',
     long_description=open(readme_file()).read(),
     packages=find_packages(exclude=['scripts']),
     setup_requires=['pytest-runner'],
@@ -56,7 +56,8 @@ setup(
         'diff-match-patch',
         'prettytable',
         'voluptuous',
-        "python-dateutil",
+        'python-dateutil',
+        'websocket-client'
     ],
     entry_points={
         'console_scripts': [

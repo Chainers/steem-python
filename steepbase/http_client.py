@@ -1,24 +1,22 @@
 # coding=utf-8
-import concurrent.futures
-import json
 import logging
 import socket
 import time
 from functools import partial
 from http.client import RemoteDisconnected
 from itertools import cycle
-from urllib.parse import urlparse
 
 import certifi
 import urllib3
-from steepbase.exceptions import RPCError
 from urllib3.connection import HTTPConnection
 from urllib3.exceptions import MaxRetryError, ReadTimeoutError, ProtocolError
+
+from steepbase.base_client import BaseClient
 
 logger = logging.getLogger(__name__)
 
 
-class HttpClient(object):
+class HttpClient(BaseClient):
     """ Simple Steem JSON-HTTP-RPC API
 
     This class serves as an abstraction layer for easy use of the Steem API.
@@ -47,6 +45,8 @@ class HttpClient(object):
     """
 
     def __init__(self, nodes, **kwargs):
+        super().__init__()
+
         self.return_with_args = kwargs.get('return_with_args', False)
         self.re_raise = kwargs.get('re_raise', True)
         self.max_workers = kwargs.get('max_workers', None)
@@ -82,7 +82,6 @@ class HttpClient(object):
         '''
 
         self.nodes = cycle(nodes)
-        self.url = ''
         self.request = None
         self.next_node()
 
@@ -100,37 +99,6 @@ class HttpClient(object):
         """ Change current node to provided node URL. """
         self.url = node_url
         self.request = partial(self.http.urlopen, 'POST', self.url)
-
-    @property
-    def hostname(self):
-        return urlparse(self.url).hostname
-
-    @staticmethod
-    def json_rpc_body(name, *args, api=None, as_json=True, _id=0):
-        """ Build request body for steemd RPC requests.
-
-        Args:
-            name (str): Name of a method we are trying to call. (ie: `get_accounts`)
-            args: A list of arguments belonging to the calling method.
-            api (None, str): If api is provided (ie: `follow_api`),
-             we generate a body that uses `call` method appropriately.
-            as_json (bool): Should this function return json as dictionary or string.
-            _id (int): This is an arbitrary number that can be used for request/response tracking in multi-threaded
-             scenarios.
-
-        Returns:
-            (dict,str): If `as_json` is set to `True`, we get json formatted as a string.
-            Otherwise, a Python dictionary is returned.
-        """
-        headers = {"jsonrpc": "2.0", "id": _id}
-        if api:
-            body_dict = {**headers, "method": "call", "params": [api, name, args]}
-        else:
-            body_dict = {**headers, "method": name, "params": args}
-        if as_json:
-            return json.dumps(body_dict, ensure_ascii=False).encode('utf8')
-        else:
-            return body_dict
 
     def exec(self, name, *args, api=None, return_with_args=None, _ret_cnt=0):
         """ Execute a method against steemd RPC.
@@ -184,43 +152,3 @@ class HttpClient(object):
                 response=response,
                 args=args,
                 return_with_args=return_with_args)
-
-    def _return(self, response=None, args=None, return_with_args=None):
-        return_with_args = return_with_args or self.return_with_args
-        result = None
-
-        if response:
-            try:
-                response_json = json.loads(response.data.decode('utf-8'))
-            except Exception as e:
-                extra = dict(response=response, request_args=args, err=e)
-                logger.info('failed to load response', extra=extra)
-                result = None
-            else:
-                if 'error' in response_json:
-                    error = response_json['error']
-
-                    if self.re_raise:
-                        error_message = error.get(
-                            'detail', response_json['error']['message'])
-                        raise RPCError(error_message)
-
-                    result = response_json['error']
-                else:
-                    result = response_json.get('result', None)
-        if return_with_args:
-            return result, args
-        else:
-            return result
-
-    def exec_multi_with_futures(self, name, params, api=None, max_workers=None):
-        with concurrent.futures.ThreadPoolExecutor(
-                max_workers=max_workers) as executor:
-            # Start the load operations and mark each future with its URL
-            def ensure_list(parameter):
-                return parameter if type(parameter) in (list, tuple, set) else [parameter]
-
-            futures = (executor.submit(self.exec, name, *ensure_list(param), api=api)
-                       for param in params)
-            for future in concurrent.futures.as_completed(futures):
-                yield future.result()

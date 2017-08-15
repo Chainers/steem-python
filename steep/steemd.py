@@ -9,7 +9,7 @@ from steep.blockchain import Blockchain
 from steep.post import Post
 from steep.utils import resolve_identifier
 from steepbase.chains import known_chains
-from steepbase.http_client import HttpClient
+from steepbase.connector import Connector
 from steepbase.storage import configStorage
 from steepbase.transactions import SignedTransaction
 from steepbase.types import PointInTime
@@ -23,7 +23,7 @@ def get_config_node_list():
         return nodes.split(',')
 
 
-class Steemd(HttpClient):
+class Steemd(Connector):
     """ Connect to the Steem network.
 
         Args:
