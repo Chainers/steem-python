@@ -248,8 +248,8 @@ class Post(dict):
         """
         # Test if post is archived, if so, voting is worthless but just
         # pollutes the blockchain and account history
-        if self.is_main_post() and not self.get('net_rshares'):
-            raise VotingInvalidOnArchivedPost
+        # if self.is_main_post() and not self.get('net_rshares'):
+        #     raise VotingInvalidOnArchivedPost
         return self.commit.vote(self.identifier, weight, account=voter)
 
     def edit(self, body, meta=None, replace=False):
