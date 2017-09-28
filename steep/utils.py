@@ -6,6 +6,7 @@ import re
 import time
 from datetime import datetime
 from json import JSONDecodeError
+from math import log10
 from urllib.parse import urlparse
 
 import w3lib.url
@@ -24,6 +25,8 @@ RE_HUNK_HEADER = re.compile(
 # ensure deterministec language detection
 DetectorFactory.seed = 0
 MIN_TEXT_LENGTH_FOR_DETECTION = 20
+
+epoch = datetime(1970, 1, 1)
 
 
 def block_num_from_hash(block_hash: str) -> int:
@@ -349,3 +352,23 @@ def strfdelta(tdelta, fmt):
 
 def is_valid_account_name(name):
     return re.match('^[a-z][a-z0-9\-.]{2,15}$', name)
+
+
+def epoch_seconds(date: datetime):
+    return (date - epoch).total_seconds()
+
+
+def calculate_score(S: int, T: int, score: int, created_tm: datetime):
+    # implemented libraries/plugins/tags/tags_plugin.cpp from Node sources, method calculate_score
+    mod_score = score / S
+    order = log10(max(abs(mod_score), 1))
+    sign = 1 if mod_score > 0 else -1 if mod_score < 0 else 0
+    return sign * order + epoch_seconds(created_tm) / T
+
+
+def calculate_hot(score: int, created_tm: datetime):
+    return calculate_score(10000000, 10000, score, created_tm)
+
+
+def calculate_trending(score: int, created_tm: datetime):
+    return calculate_score(10000000, 480000, score, created_tm)
