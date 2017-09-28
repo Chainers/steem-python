@@ -360,6 +360,11 @@ def epoch_seconds(date: datetime):
 
 def calculate_score(S: int, T: int, score: int, created_tm: datetime):
     # implemented libraries/plugins/tags/tags_plugin.cpp from Node sources, method calculate_score
+    if isinstance(score, str):
+        try:
+            score = int(score)
+        except ValueError:
+            score = 0
     mod_score = score / S
     order = log10(max(abs(mod_score), 1))
     sign = 1 if mod_score > 0 else -1 if mod_score < 0 else 0
