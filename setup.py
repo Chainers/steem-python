@@ -5,7 +5,6 @@ import sys
 from setuptools import find_packages
 from setuptools import setup
 
-from steep import __version__ as version
 
 assert sys.version_info[0] == 3 and sys.version_info[1] >= 5, "steep-steem requires Python 3.5 or newer"
 
@@ -20,7 +19,7 @@ def license_file():
 
 setup(
     name='steep-steem',
-    version=version,
+    version='0.0.6',
     author='@steepshot',
     author_email='steepshot.org@gmail.com',
     description='Fork of official python STEEM library',
