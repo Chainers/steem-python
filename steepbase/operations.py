@@ -693,6 +693,8 @@ class CommentOptions(GrapheneObject):
             # handle beneficiaries
             extensions = Array([])
             beneficiaries = kwargs.get('beneficiaries')
+            if not beneficiaries and kwargs['extensions'] and len(kwargs['extensions'][0]) == 2:
+                beneficiaries = kwargs['extensions'][0][1].get('beneficiaries')
             if beneficiaries and type(beneficiaries) == list:
                 ext_obj = [0, {'beneficiaries': beneficiaries}]
                 ext = CommentOptionExtensions(ext_obj)

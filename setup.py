@@ -19,7 +19,7 @@ def license_file():
 
 setup(
     name='steep-steem',
-    version='0.0.7',
+    version='0.0.8',
     author='@steepshot',
     author_email='steepshot.org@gmail.com',
     description='Fork of official python STEEM library',
