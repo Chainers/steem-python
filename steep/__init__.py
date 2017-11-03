@@ -1,4 +1,4 @@
 # -*- coding: utf-8 -*-
 from steep.steem import Steem
 
-__version__ = '0.0.8'
+__version__ = '0.0.9'

@@ -66,6 +66,9 @@ class Post(dict):
         if "body" in post and re.match("^@@", post["body"]):
             self.patched = True
 
+        # This field is returned from blockchain, but it's empty. Fill it
+        post['reblogged_by'] = [i for i in self.steemd.get_reblogged_by(post_author, post_permlink) if i != post_author]
+
         # Parse Times
         parse_times = ["active",
                        "cashout_time",
