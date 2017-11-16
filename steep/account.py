@@ -3,9 +3,7 @@ import math
 import time
 from contextlib import suppress
 
-from funcy.colls import walk_values, get_in
-from funcy.seqs import take
-from funcy.simple_funcs import rpartial
+from funcy import walk_values, get_in, take, rpartial
 from toolz import dissoc
 
 from steep.amount import Amount

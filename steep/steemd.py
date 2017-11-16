@@ -2,7 +2,7 @@
 import logging
 from typing import List, Any, Union, Set
 
-from funcy.seqs import first
+from funcy import first
 
 from steep.block import Block
 from steep.blockchain import Blockchain

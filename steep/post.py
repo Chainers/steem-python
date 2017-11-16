@@ -4,9 +4,7 @@ import re
 from datetime import datetime
 
 from dateutil.parser import parse
-from funcy.colls import walk_values, get_in
-from funcy.flow import silent
-from funcy.seqs import flatten
+from funcy import walk_values, get_in, silent, flatten
 
 from steep.amount import Amount
 from steep.commit import Commit

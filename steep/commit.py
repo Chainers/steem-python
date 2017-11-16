@@ -5,9 +5,7 @@ import re
 from datetime import datetime, timedelta
 
 import voluptuous as vo
-from funcy.colls import none
-from funcy.flow import silent
-from funcy.seqs import first
+from funcy import none, silent, first
 
 from steep.account import Account
 from steep.amount import Amount
