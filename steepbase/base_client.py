@@ -1,9 +1,12 @@
 import concurrent.futures
 import json
 import logging
+import re
 from urllib.parse import urlparse
 
-from steepbase.exceptions import RPCError
+from steepbase.exceptions import RPCError, decodeRPCErrorMsg, AlreadyTransactedThisBlock, \
+    MissingRequiredPostingAuthority, VoteWeightTooSmall, OnlyVoteOnceEvery3Seconds, AlreadyVotedSimilarily, \
+    PostOnlyEvery5Min, DuplicateTransaction, ExceededAllowedBandwidth, NoMethodWithName, UnhandledRPCError
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +78,30 @@ class BaseClient(object):
                     if self.re_raise:
                         error_message = error.get(
                             'detail', response_json['error']['message'])
-                        raise RPCError(error_message)
+                        e = RPCError(error_message)
+                        msg = decodeRPCErrorMsg(e).strip()
+                        if msg == "Account already transacted this block.":
+                            raise AlreadyTransactedThisBlock(msg)
+                        elif msg == "missing required posting authority":
+                            raise MissingRequiredPostingAuthority
+                        elif msg == "Voting weight is too small, please accumulate more voting power or steem power.":
+                            raise VoteWeightTooSmall(msg)
+                        elif msg == "Can only vote once every 3 seconds.":
+                            raise OnlyVoteOnceEvery3Seconds(msg)
+                        elif msg == "You have already voted in a similar way.":
+                            raise AlreadyVotedSimilarily(msg)
+                        elif msg == "You may only post once every 5 minutes.":
+                            raise PostOnlyEvery5Min(msg)
+                        elif msg == "Duplicate transaction check failed":
+                            raise DuplicateTransaction(msg)
+                        elif msg == "Account exceeded maximum allowed bandwidth per vesting share.":
+                            raise ExceededAllowedBandwidth(msg)
+                        elif re.match("^no method with name.*", msg):
+                            raise NoMethodWithName(msg)
+                        elif msg:
+                            raise UnhandledRPCError(msg)
+                        else:
+                            raise e
 
                     result = response_json['error']
                 else:
