@@ -116,19 +116,25 @@ class Account(dict):
     def voting_power(self):
         return self['voting_power'] / 100
 
-    def get_followers(self):
-        return [x['follower'] for x in self._get_followers(direction="follower")]
+    def get_followers(self, limit: int = None, offset: str = None):
+        return [x['follower'] for x in self._get_followers(direction="follower", limit=limit, offset=offset)]
 
-    def get_following(self):
-        return [x['following'] for x in self._get_followers(direction="following")]
+    def get_following(self, limit: int = None, offset: str = None):
+        return [x['following'] for x in self._get_followers(direction="following", limit=limit, offset=offset)]
 
-    def _get_followers(self, direction="follower", last_user=""):
+    def _get_followers(self, direction="follower", limit=None, offset=""):
+        if limit:
+            limit = min(limit, 100)
         if direction == "follower":
-            followers = self.steemd.get_followers(self.name, last_user, "blog", 100)
+            followers = self.steemd.get_followers(self.name, offset, "blog", limit or 100)
         elif direction == "following":
-            followers = self.steemd.get_following(self.name, last_user, "blog", 100)
-        if len(followers) >= 100:
-            followers += self._get_followers(direction=direction, last_user=followers[-1][direction])[1:]
+            followers = self.steemd.get_following(self.name, offset, "blog", limit or 100)
+        if not limit and len(followers) >= 100:
+            followers += self._get_followers(
+                direction=direction,
+                limit=limit,
+                offset=followers[-1][direction]
+            )[1:]
         return followers
 
     def has_voted(self, post):
