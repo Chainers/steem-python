@@ -65,15 +65,24 @@ class Blockchain(object):
         # Let's find out how often blocks are generated!
         block_interval = self.config().get("STEEMIT_BLOCK_INTERVAL")
 
+        is_reversed = end_block and start_block > end_block
+
         if not start_block:
             start_block = self.get_current_block_num()
 
         while True:
             head_block = self.get_current_block_num()
 
-            for block_num in range(start_block, head_block + 1):
-                if end_block and block_num > end_block:
-                    raise StopIteration("Reached stop block at: #%s" % end_block)
+            range_params = (start_block, head_block + 1)
+            if end_block and start_block > end_block:
+                range_params = (start_block, end_block - 2, -1)
+
+            for block_num in range(*range_params):
+                if end_block is not None:
+                    if is_reversed and block_num < end_block:
+                        raise StopIteration("Reached stop block at: #%s" % block_num)
+                    elif not is_reversed and block_num > end_block:
+                        raise StopIteration("Reached stop block at: #%s" % block_num)
 
                 if full_blocks:
                     yield self.steem.get_block(block_num)
