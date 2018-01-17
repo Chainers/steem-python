@@ -235,12 +235,8 @@ class Commit(object):
         category = None
         tags = tags or json_metadata.get('tags', [])
         if tags:
-            if len(tags) > 20:
-                raise ValueError('Can only specify up to 5 tags per post.')
-
             # first tag should be a category
             category = tags[0]
-            json_metadata.update({"tags": tags[1:]})
 
         # can't provide a category while replying to a post
         if reply_identifier and category:

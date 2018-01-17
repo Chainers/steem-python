@@ -74,8 +74,8 @@ class Blockchain(object):
             head_block = self.get_current_block_num()
 
             range_params = (start_block, head_block + 1)
-            if end_block and start_block > end_block:
-                range_params = (start_block, end_block - 2, -1)
+            if end_block is not None and start_block > end_block:
+                range_params = (start_block, max(0, end_block - 2), -1)
 
             for block_num in range(*range_params):
                 if end_block is not None:

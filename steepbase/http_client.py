@@ -112,6 +112,8 @@ class HttpClient(BaseClient):
         response = None
         try:
             response = self.request(body=body)
+            if response.status in (502, 503, 504):
+                raise ProtocolError('Bad status code: %s' % response.status)
         except (MaxRetryError,
                 ConnectionResetError,
                 ReadTimeoutError,
