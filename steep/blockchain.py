@@ -121,7 +121,7 @@ class Blockchain(object):
                     except json.JSONDecodeError:
                         continue
                     else:
-                        if 'op' not in event:
+                        if not isinstance(event, dict) and 'op' not in event:
                             continue
                 op_type, op = event['op']
                 if not filter_by or op_type in filter_by:
