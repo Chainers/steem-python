@@ -115,14 +115,8 @@ class Blockchain(object):
                 events = [ops]
 
             for event in events:
-                if not isinstance(event, dict):
-                    try:
-                        event = json.loads(event)
-                    except json.JSONDecodeError:
-                        continue
-                    else:
-                        if not isinstance(event, dict) and 'op' not in event:
-                            continue
+                if not isinstance(event, dict) or 'op' not in event:
+                    continue
                 op_type, op = event['op']
                 if not filter_by or op_type in filter_by:
                     # return unmodified steemd output
