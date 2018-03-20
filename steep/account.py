@@ -2,6 +2,7 @@ import datetime
 import math
 import time
 from contextlib import suppress
+from sys import getrecursionlimit
 
 from funcy import walk_values, get_in, take, rpartial
 from toolz import dissoc
@@ -120,7 +121,16 @@ class Account(dict):
         return [x['follower'] for x in self._get_followers(direction="follower", limit=limit, offset=offset)]
 
     def get_following(self, limit: int = None, offset: str = None):
-        return [x['following'] for x in self._get_followers(direction="following", limit=limit, offset=offset)]
+        following_count = self.steemd.get_follow_count(self.name)['following_count']
+        if following_count <= 100 * (getrecursionlimit() - 100):
+            return [x['following'] for x in self._get_followers(direction="following", limit=limit, offset=offset)]
+        else:
+            following = []
+            for chunk in range(following_count // 100 + 1):
+                following += [x['following'] for x in self._get_followers(direction="following", limit=100, offset=offset)]
+                offset = following[-1]
+            return following
+
 
     def _get_followers(self, direction="follower", limit=None, offset=""):
         if limit:
