@@ -40,7 +40,7 @@ class Blog:
     def __init__(self, account_name: str, comments_only=False, steemd_instance=None):
         self.steem = steemd_instance or shared_steemd_instance()
         self.comments_only = comments_only
-        self.account = Account(account_name)
+        self.account = Account(account_name, steemd_instance=steemd_instance)
         self.history = self.account.history_reverse(filter_by='comment')
         self.seen_items = set()
 

@@ -2,7 +2,6 @@ import datetime
 import math
 import time
 from contextlib import suppress
-from sys import getrecursionlimit
 
 from funcy import walk_values, get_in, take, rpartial
 from toolz import dissoc
@@ -121,31 +120,36 @@ class Account(dict):
         return [x['follower'] for x in self._get_followers(direction="follower", limit=limit, offset=offset)]
 
     def get_following(self, limit: int = None, offset: str = None):
-        following_count = self.steemd.get_follow_count(self.name)['following_count']
-        if following_count <= 100 * (getrecursionlimit() - 100):
-            return [x['following'] for x in self._get_followers(direction="following", limit=limit, offset=offset)]
-        else:
-            following = []
-            for chunk in range(following_count // 100 + 1):
-                following += [x['following'] for x in self._get_followers(direction="following", limit=100, offset=offset)]
-                offset = following[-1]
-            return following
+        return [x['following'] for x in self._get_followers(direction="following", limit=limit, offset=offset)]
 
+    def _get_followers(self, direction='follower', limit=None, offset=''):
+        users = []
 
-    def _get_followers(self, direction="follower", limit=None, offset=""):
-        if limit:
-            limit = min(limit, 100)
-        if direction == "follower":
-            followers = self.steemd.get_followers(self.name, offset, "blog", limit or 100)
-        elif direction == "following":
-            followers = self.steemd.get_following(self.name, offset, "blog", limit or 100)
-        if not limit and len(followers) >= 100:
-            followers += self._get_followers(
-                direction=direction,
-                limit=limit,
-                offset=followers[-1][direction]
-            )[1:]
-        return followers
+        get_users = {
+            'follower': self.steemd.get_followers,
+            'following': self.steemd.get_following
+        }[direction]
+
+        limit = limit or 10**6
+        max_request_limit = 100
+        left_number = limit
+
+        while left_number > 0:
+            select_limit = min(left_number, max_request_limit)
+            result = get_users(self.name, offset, 'blog', select_limit)
+            users.extend(result)
+
+            has_next = len(users) < limit and len(result) >= select_limit
+            if has_next:
+                if users:
+                    del users[-1]
+                offset = result[-1][direction]
+
+                left_number = left_number - len(result) + 1
+            else:
+                left_number = 0
+
+        return users
 
     def has_voted(self, post):
         active_votes = {v["voter"]: v for v in getattr(post, "active_votes")}
