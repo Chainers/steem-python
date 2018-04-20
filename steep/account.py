@@ -56,7 +56,6 @@ class Account(dict):
     def profile(self):
         with suppress(TypeError):
             return get_in(self, ['json_metadata', 'profile'], default={})
-        return {}
 
     @property
     def sp(self):
@@ -244,7 +243,14 @@ class Account(dict):
             "balances": self.get_balances(),
         }
 
-    def get_account_history(self, index, limit, start=None, stop=None, order=-1, filter_by=None, raw_output=False):
+    def get_account_history(self,
+                            index,
+                            limit,
+                            start=None,
+                            stop=None,
+                            order=-1,
+                            filter_by=None,
+                            raw_output=False):
         """ A generator over steemd.get_account_history.
 
         It offers serialization, filtering and fine grained iteration control.
@@ -303,7 +309,11 @@ class Account(dict):
                     if op_type == filter_by:
                         yield construct_op(self.name)
 
-    def history(self, filter_by=None, start=0, batch_size=1000, raw_output=False):
+    def history(self,
+                filter_by=None,
+                start=0,
+                batch_size=1000,
+                raw_output=False):
         """ Stream account history in chronological order.
         """
         max_index = self.virtual_op_count()
@@ -324,7 +334,10 @@ class Account(dict):
             )
             i += (batch_size + 1)
 
-    def history_reverse(self, filter_by=None, batch_size=1000, raw_output=False):
+    def history_reverse(self,
+                        filter_by=None,
+                        batch_size=1000,
+                        raw_output=False):
         """ Stream account history in reverse chronological order.
         """
         start_index = self.virtual_op_count()

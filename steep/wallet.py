@@ -19,7 +19,9 @@ class Wallet:
         or uses a SQLite database managed by storage.py.
 
         :param Steem rpc: RPC connection to a Steem node
-        :param array,dict,string keys: Predefine the wif keys to shortcut the wallet database
+
+        :param array,dict,string keys: Predefine the wif keys to shortcut
+        the wallet database
 
         Three wallet operation modes are possible:
 
@@ -55,7 +57,13 @@ class Wallet:
 
         # RPC
         self.steemd = steemd_instance or shared_steemd_instance()
-        self.prefix = "STM"
+
+        # Prefix
+        if self.steemd:
+            self.prefix = self.steemd.chain_params["prefix"]
+        else:
+            # If not connected, load prefix from config
+            self.prefix = self.configStorage["prefix"]
 
         if "keys" in kwargs:
             self.setKeys(kwargs["keys"])
@@ -63,8 +71,7 @@ class Wallet:
             """ If no keys are provided manually we load the SQLite
                 keyStorage
             """
-            from steepbase.storage import (keyStorage,
-                                           MasterPassword)
+            from steepbase.storage import (keyStorage, MasterPassword)
             self.MasterPassword = MasterPassword
             self.keyStorage = keyStorage
 
@@ -92,8 +99,8 @@ class Wallet:
         if not self.created():
             self.newWallet()
 
-        if (self.masterpassword is None and
-                self.configStorage[self.MasterPassword.config_key]):
+        if (self.masterpassword is None
+                and self.configStorage[self.MasterPassword.config_key]):
             if pwd is None:
                 pwd = self.getPassword()
             masterpwd = self.MasterPassword(pwd)
@@ -318,7 +325,7 @@ class Wallet:
         # FIXME, this only returns the first associated key.
         # If the key is used by multiple accounts, this
         # will surely lead to undesired behavior
-        names = self.steemd.exec('get_key_references', [pub], api="account_by_key_api")[0]
+        names = self.steemd.call('get_key_references', [pub], api="account_by_key_api")[0]
         if not names:
             return None
         else:
@@ -329,21 +336,19 @@ class Wallet:
         """
         name = self.getAccountFromPublicKey(pub)
         if not name:
-            return {"name": None,
-                    "type": None,
-                    "pubkey": pub
-                    }
+            return {"name": None, "type": None, "pubkey": pub}
         else:
             try:
                 account = Account(name)
             except:
                 return
             keyType = self.getKeyType(account, pub)
-            return {"name": name,
-                    "account": account,
-                    "type": keyType,
-                    "pubkey": pub
-                    }
+            return {
+                "name": name,
+                "account": account,
+                "type": keyType,
+                "pubkey": pub
+            }
 
     def getKeyType(self, account, pub):
         """ Get key type
@@ -379,10 +384,12 @@ class Wallet:
                 continue
             type = account["type"]
             if name not in r:
-                r[name] = {"posting": False,
-                           "owner": False,
-                           "active": False,
-                           "memo": False}
+                r[name] = {
+                    "posting": False,
+                    "owner": False,
+                    "active": False,
+                    "memo": False
+                }
             r[name][type] = True
         return r
 

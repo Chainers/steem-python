@@ -2,6 +2,8 @@ import hashlib
 import logging
 import struct
 import time
+import array
+import sys
 from binascii import hexlify, unhexlify
 from collections import OrderedDict
 from datetime import datetime
@@ -59,8 +61,12 @@ class SignedTransaction(GrapheneObject):
                 kwargs["signatures"] = Array([Signature(unhexlify(a)) for a in kwargs["signatures"]])
 
             if "operations" in kwargs:
-                if all([not isinstance(a, Operation) for a in kwargs["operations"]]):
-                    kwargs['operations'] = Array([Operation(a) for a in kwargs["operations"]])
+                if all([
+                    not isinstance(a, Operation)
+                    for a in kwargs["operations"]
+                ]):
+                    kwargs['operations'] = Array(
+                        [Operation(a) for a in kwargs["operations"]])
                 else:
                     kwargs['operations'] = Array(kwargs["operations"])
 
@@ -86,7 +92,7 @@ class SignedTransaction(GrapheneObject):
             else:
                 p = self.recover_public_key(digest, signature, i)
                 if (p.to_string() == pubkey.to_string() or
-                            self.compressedPubkey(p) == pubkey.to_string()):
+                        self.compressedPubkey(p) == pubkey.to_string()):
                     return i
         return None
 
@@ -273,7 +279,6 @@ class SignedTransaction(GrapheneObject):
                         log.info("Still searching for a canonical signature. Tried %d times already!" % cnt)
 
                     # Deterministic k
-                    #
                     k = ecdsa.rfc6979.generate_k(
                         sk.curve.generator.order(),
                         sk.privkey.secret_multiplier,
@@ -288,7 +293,8 @@ class SignedTransaction(GrapheneObject):
                     sigder = sk.sign_digest(
                         self.digest,
                         sigencode=ecdsa.util.sigencode_der,
-                        k=k)
+                        k=k
+                    )
 
                     # Reformating of signature
                     #

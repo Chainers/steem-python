@@ -1,4 +1,3 @@
-# coding=utf-8
 import logging
 import socket
 import time
@@ -11,6 +10,7 @@ import urllib3
 from urllib3.connection import HTTPConnection
 from urllib3.exceptions import MaxRetryError, ReadTimeoutError, ProtocolError
 
+from steep.consts import NETWORK_BROADCAST_API
 from steepbase.base_client import BaseClient
 
 logger = logging.getLogger(__name__)
@@ -27,16 +27,18 @@ class HttpClient(BaseClient):
     .. code-block:: python
 
        from steem.http_client import HttpClient
-       rpc = HttpClient(['https://steemd-node1.com', 'https://steemd-node2.com'])
+
+       rpc = HttpClient(['https://steemd-node1.com',
+       'https://steemd-node2.com'])
 
     any call available to that port can be issued using the instance
-    via the syntax ``rpc.exec('command', *parameters)``.
+    via the syntax ``rpc.call('command', *parameters)``.
 
     Example:
 
     .. code-block:: python
 
-       rpc.exec(
+       rpc.call(
            'get_followers',
            'furion', 'abit', 'blog', 10,
            api='follow_api'
@@ -82,6 +84,7 @@ class HttpClient(BaseClient):
         '''
 
         self.nodes = cycle(nodes)
+        self.url = ''
         self.request = None
         self.next_node()
 
@@ -100,20 +103,20 @@ class HttpClient(BaseClient):
         self.url = node_url
         self.request = partial(self.http.urlopen, 'POST', self.url)
 
-    def exec(self, name, *args, api=None, return_with_args=None, _ret_cnt=0):
-        """ Execute a method against steemd RPC.
+    def call(self, name, *args, api=None, return_with_args=None, _ret_cnt=0):
+        """ Call a remote procedure in golosd.
 
         Warnings:
             This command will auto-retry in case of node failure, as well as handle
             node fail-over, unless we are broadcasting a transaction.
             In latter case, the exception is **re-raised**.
         """
+
         body = HttpClient.json_rpc_body(name, *args, api=api)
         response = None
+
         try:
             response = self.request(body=body)
-            if response.status in (502, 503, 504):
-                raise ProtocolError('Bad status code: %s' % response.status)
         except (MaxRetryError,
                 ConnectionResetError,
                 ReadTimeoutError,
@@ -121,20 +124,23 @@ class HttpClient(BaseClient):
                 ProtocolError) as e:
             # if we broadcasted a transaction, always raise
             # this is to prevent potential for double spend scenario
-            if api == 'network_broadcast_api':
+            if api == NETWORK_BROADCAST_API:
                 raise e
 
             # try switching nodes before giving up
             if _ret_cnt > 2:
-                time.sleep(5 * _ret_cnt)
+                # we should wait only a short period before trying
+                # the next node, but still slowly increase backoff
+                time.sleep(_ret_cnt)
             elif _ret_cnt > 10:
                 raise e
             self.next_node()
             logging.debug('Switched node to %s due to exception: %s' %
                           (self.hostname, e.__class__.__name__))
-            return self.exec(name, *args,
+            return self.call(name, *args,
                              return_with_args=return_with_args,
-                             _ret_cnt=_ret_cnt + 1)
+                             _ret_cnt=_ret_cnt + 1
+                             )
         except Exception as e:
             if self.re_raise:
                 raise e
@@ -146,8 +152,7 @@ class HttpClient(BaseClient):
                     args=args,
                     return_with_args=return_with_args)
         else:
-            if response.status not in tuple(
-                    [*response.REDIRECT_STATUSES, 200]):
+            if response.status not in [*response.REDIRECT_STATUSES, 200]:
                 logger.info('non 200 response:%s', response.status)
 
             return self._return(

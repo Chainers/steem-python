@@ -1,6 +1,9 @@
 import hashlib
+import json
 import struct
+import sys
 from binascii import hexlify, unhexlify
+from collections import OrderedDict
 
 from steepbase.operations import Memo
 from Crypto.Cipher import AES
@@ -77,27 +80,26 @@ def encode_memo(priv, pub, nonce, message, **kwargs):
         :rtype: hex
 
     """
-    from steepbase import transactions
     shared_secret = get_shared_secret(priv, pub)
     aes, check = init_aes(shared_secret, nonce)
     raw = bytes(message, 'utf8')
-    " Padding "
+    # Padding
     BS = 16
     if len(raw) % BS:
         raw = _pad(raw, BS)
-    " Encryption "
+    # Encryption
     cipher = hexlify(aes.encrypt(raw)).decode('ascii')
     prefix = kwargs.pop("prefix", default_prefix)
-    s = {
-        "from": format(priv.pubkey, prefix),
-        "to": format(pub, prefix),
-        "nonce": nonce,
-        "check": check,
-        "encrypted": cipher,
-        "from_priv": repr(priv),
-        "to_pub": repr(pub),
-        "shared_secret": shared_secret,
-    }
+    s = OrderedDict([
+        ("from", format(priv.pubkey, prefix)),
+        ("to", format(pub, prefix)),
+        ("nonce", nonce),
+        ("check", check),
+        ("encrypted", cipher),
+        ("from_priv", repr(priv)),
+        ("to_pub", repr(pub)),
+        ("shared_secret", shared_secret),
+    ])
     tx = Memo(**s)
     return "#" + base58encode(hexlify(bytes(tx)).decode("ascii"))
 
@@ -132,13 +134,13 @@ def decode_memo(priv, message):
     else:
         raise ValueError("Incorrect PrivateKey")
 
-    " Init encryption "
+    # Init encryption
     aes, checksum = init_aes(shared_secret, nonce)
 
-    " Check "
+    # Check
     assert check == checksum, "Checksum failure"
 
-    " Encryption "
+    # Encryption
     # remove the varint prefix (FIXME, long messages!)
     message = cipher[2:]
     message = aes.decrypt(unhexlify(bytes(message, 'ascii')))

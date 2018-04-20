@@ -3,6 +3,7 @@ import logging
 from steep.account import Account
 from steep.instance import shared_steemd_instance
 from steep.wallet import Wallet
+from steepbase import operations
 from steepbase.account import PrivateKey
 from steepbase.exceptions import (
     InsufficientAuthorityError,
@@ -20,7 +21,12 @@ class TransactionBuilder(dict):
         operations and signers.
     """
 
-    def __init__(self, tx=None, steemd_instance=None, wallet_instance=None, no_broadcast=False, expiration=60):
+    def __init__(self,
+                 tx=None,
+                 steemd_instance=None,
+                 wallet_instance=None,
+                 no_broadcast=False,
+                 expiration=60):
         self.steemd = steemd_instance or shared_steemd_instance()
         self.no_broadcast = no_broadcast
         self.expiration = expiration
@@ -41,7 +47,8 @@ class TransactionBuilder(dict):
         self.constructTx()
 
     def appendSigner(self, account, permission):
-        assert permission in ["active", "owner", "posting"], "Invalid permission"
+        assert permission in ["active", "owner",
+                              "posting"], "Invalid permission"
         account = Account(account, steemd_instance=self.steemd)
 
         required_treshold = account[permission]["weight_threshold"]
@@ -98,6 +105,14 @@ class TransactionBuilder(dict):
                 from the wallet as defined in "missing_signatures" key
                 of the transactions.
         """
+
+        # We need to set the default prefix, otherwise pubkeys are
+        # presented wrongly!
+        if self.steemd:
+            operations.default_prefix = self.steemd.chain_params["prefix"]
+        elif "blockchain" in self:
+            operations.default_prefix = self["blockchain"]["prefix"]
+
         try:
             signedtx = SignedTransaction(**self.json())
         except:
@@ -141,9 +156,7 @@ class TransactionBuilder(dict):
         # We add a required_authorities to be able to identify
         # how to sign later. This is an array, because we
         # may later want to allow multiple operations per tx
-        self.update({"required_authorities": {
-            account: authority
-        }})
+        self.update({"required_authorities": {account: authority}})
         for account_auth in authority["account_auths"]:
             account_auth_account = Account(account_auth[0], steemd_instance=self.steemd)
             self["required_authorities"].update({
@@ -151,9 +164,7 @@ class TransactionBuilder(dict):
             })
 
         # Try to resolve required signatures for offline signing
-        self["missing_signatures"] = [
-            x[0] for x in authority["key_auths"]
-        ]
+        self["missing_signatures"] = [x[0] for x in authority["key_auths"]]
         # Add one recursion of keys from account_auths:
         for account_auth in authority["account_auths"]:
             account_auth_account = Account(account_auth[0], steemd_instance=self.steemd)

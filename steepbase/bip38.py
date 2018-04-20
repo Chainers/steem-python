@@ -1,5 +1,6 @@
 import hashlib
 import logging
+import sys
 from binascii import hexlify, unhexlify
 
 from steepbase.account import PrivateKey
@@ -24,9 +25,7 @@ if not SCRYPT_MODULE:
 
             SCRYPT_MODULE = "pylibscrypt"
         except ImportError:
-            raise ImportError(
-                "Missing dependency: scrypt or pylibscrypt"
-            )
+            raise ImportError("Missing dependency: scrypt or pylibscrypt")
 
 log.debug("Using scrypt module: %s" % SCRYPT_MODULE)
 

@@ -12,12 +12,15 @@ You can run this script as many times as you like, and it will continue from the
 
         import json
         import os
-        from contextlib import suppress
+        
         from steem.blockchain import Blockchain
 
 
         def get_last_line(filename):
             if os.path.isfile(filename):
+                if os.stat(filename).st_size == 0:
+                    fp = open(filename)
+                    return fp.read()
                 with open(filename, 'rb') as f:
                     f.seek(-2, 2)
                     while f.read(1) != b"\n":
@@ -50,8 +53,10 @@ You can run this script as many times as you like, and it will continue from the
 
         if __name__ == '__main__':
             output_file = '/home/user/Downloads/steem.blockchain.json'
-            with suppress(KeyboardInterrupt):
+            try:
                 run(output_file)
+            except KeyboardInterrupt:
+                pass
 
 
 To see how many blocks we currently have, we can simply perform a line count.
@@ -185,8 +190,6 @@ Make sure to set ``whoami`` to your Steem username before running.
 
     ::
 
-        from contextlib import suppress
-
         from steem.blockchain import Blockchain
         from steem.post import Post
 
@@ -210,5 +213,7 @@ Make sure to set ``whoami`` to your Steem username before running.
                         post.upvote(weight=upvote_pct, voter=whoami)
 
         if __name__ == '__main__':
-            with suppress(KeyboardInterrupt):
+            try:
                 run()
+            except KeyboardInterrupt:
+                pass

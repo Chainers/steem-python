@@ -17,7 +17,7 @@ You can change the password via `changewalletpassphrase` command.
     steempy changewalletpassphrase
 
 
-From this point on, every time an action requires your private keys, you will be prompted ot enter
+From this point on, every time an action requires your private keys, you will be prompted to enter
 this password (from CLI as well as while using `steem` library).
 
 To bypass password entry, you can set an environmnet variable ``UNLOCK``.
@@ -154,7 +154,7 @@ You can see all available commands with ``steempy -h``
     optional arguments:
       -h, --help            show this help message and exit
       --node NODE           URL for public Steem API (default:
-                            "https://steemd.steemit.com")
+                            "https://api.steemit.com")
       --no-broadcast, -d    Do not broadcast anything
       --no-wallet, -p       Do not load the wallet
       --unsigned, -x        Do not try to sign the transaction

@@ -25,8 +25,12 @@ class Post(dict):
         abstraction layer for Comments in Steem
 
         Args:
-            post (str or dict): ``@author/permlink`` or raw ``comment`` as dictionary.
+
+            post (str or dict): ``@author/permlink`` or raw ``comment`` as
+            dictionary.
+
             steemd_instance (Steemd): Steemd node to connect to
+
     """
 
     def __init__(self, post, steemd_instance=None):
@@ -42,7 +46,8 @@ class Post(dict):
             self.identifier = self.parse_identifier(post)
         elif isinstance(post, dict) and "author" in post and "permlink" in post:
             post["author"] = post["author"].replace('@', '')
-            self.identifier = construct_identifier(post["author"], post["permlink"])
+            self.identifier = construct_identifier('@', post["author"],
+                                                   post["permlink"])
         else:
             raise ValueError("Post expects an identifier or a dict "
                              "with author and permlink!")
@@ -88,10 +93,6 @@ class Post(dict):
         ]
         for p in sbd_amounts:
             post[p] = Amount(post.get(p, '0.000 SBD'))
-
-        # sum of payouts to get trending posts
-        post['sum_payout_data'] = post['total_payout_value'] + post['curator_payout_value'] + post[
-            'pending_payout_value']
 
         # calculate trending and hot scores for sorting
         post['score_trending'] = calculate_trending(post.get('net_rshares', 0), post['created'])
@@ -143,17 +144,14 @@ class Post(dict):
     def _get_root_identifier(self, post=None):
         if not post:
             post = self
-        m = re.match("/([^/]*)/@([^/]*)/([^#]*).*",
-                     post.get("url", ""))
+        m = re.match("/([^/]*)/@([^/]*)/([^#]*).*", post.get("url", ""))
         if not m:
             return "", ""
         else:
             category = m.group(1)
             author = m.group(2)
             permlink = m.group(3)
-            return construct_identifier(
-                author, permlink
-            ), category
+            return construct_identifier('@', author, permlink), category
 
     def get_replies(self):
         """ Return **first-level** comments of the post.
@@ -178,7 +176,8 @@ class Post(dict):
         children = list(flatten([list(x.get_replies()) for x in comments]))
         if not children:
             return all_comments or comments
-        return Post.get_all_replies(comments=children, all_comments=comments + children)
+        return Post.get_all_replies(
+            comments=children, all_comments=comments + children)
 
     @property
     def reward(self):
@@ -253,8 +252,8 @@ class Post(dict):
         """
         # Test if post is archived, if so, voting is worthless but just
         # pollutes the blockchain and account history
-        # if self.is_main_post() and not self.get('net_rshares'):
-        #     raise VotingInvalidOnArchivedPost
+        if not self.get('net_rshares'):
+            raise VotingInvalidOnArchivedPost
         return self.commit.vote(self.identifier, weight, account=voter)
 
     def edit(self, body, meta=None, replace=False):
@@ -295,13 +294,13 @@ class Post(dict):
             else:
                 new_meta = meta
 
-        return self.post(
+        return self.commit.post(
             original_post["title"],
             newbody,
             reply_identifier=reply_identifier,
             author=original_post["author"],
             permlink=original_post["permlink"],
-            meta=new_meta,
+            json_metadata=new_meta,
         )
 
     def reply(self, body, title="", author="", meta=None):
@@ -315,11 +314,12 @@ class Post(dict):
             :param json meta: JSON meta object that can be attached to the
                               post. (optional)
         """
-        return self.commit.post(title,
-                                body,
-                                json_metadata=meta,
-                                author=author,
-                                reply_identifier=self.identifier)
+        return self.commit.post(
+            title,
+            body,
+            json_metadata=meta,
+            author=author,
+            reply_identifier=self.identifier)
 
     def set_comment_options(self, options):
         op = CommentOptions(
