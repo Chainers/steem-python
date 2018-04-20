@@ -1,73 +1,31 @@
 #!/usr/bin/env python
 
-import io
 import os
 import sys
-from shutil import rmtree
 
-from setuptools import find_packages, setup, Command
+from setuptools import find_packages
 from setuptools import setup
 from setuptools.command.test import test as TestCommand
-
 
 assert sys.version_info[0] == 3 and sys.version_info[1] >= 5, "steep-steem requires Python 3.5 or newer"
 
 # Package meta-data.
-NAME = 'steem'
-DESCRIPTION = 'Official python steem library.'
-URL = 'https://github.com/steemit/steem-python'
-EMAIL = 'john@steemit.com'
-AUTHOR = 'Steemit'
+NAME = 'steep-steem'
+VERSION = '0.1.0'
+DESCRIPTION = 'Fork of official python STEEM library.'
+URL = 'https://github.com/Chainers/steep-steem'
+EMAIL = 'steepshot.org@gmail.com'
+AUTHOR = '@steepshot'
+
+
+def readme_file():
+    return 'README.rst' if os.path.exists('README.rst') else 'README.md'
 
 
 def license_file():
     return 'LICENSE' if os.path.exists('LICENSE') else 'LICENSE.txt'
 
 
-setup(
-    name='steep-steem',
-    version='0.0.17',
-    author='@steepshot',
-    author_email='steepshot.org@gmail.com',
-    description='Fork of official python STEEM library',
-    license=open(license_file()).read(),
-    keywords='steem steep-steem',
-    url='https://github.com/Chainers/steep-steem',
-    long_description=open(readme_file()).read(),
-    packages=find_packages(exclude=['scripts']),
-    setup_requires=['pytest-runner'],
-    tests_require=['pytest',
-                   'pep8',
-                   'pytest-pylint',
-                   'yapf',
-                   'sphinx',
-                   'recommonmark',
-                   'sphinxcontrib-restbuilder',
-                   'sphinxcontrib-programoutput',
-                   'pytest-console-scripts'],
-
-    install_requires=[
-        'appdirs',
-        'ecdsa',
-        'pylibscrypt',
-        'scrypt',
-        'pycrypto',
-        'requests',
-        'urllib3',
-        'certifi',
-        'ujson',
-        'w3lib',
-        'maya',
-        'toolz',
-        'funcy',
-        'langdetect',
-        'diff-match-patch',
-        'prettytable',
-        'voluptuous',
-        'python-dateutil',
-        'websocket-client'
-    ],
-# What packages are required for this module to be executed?
 REQUIRED = [
     'appdirs',
     'certifi',
@@ -86,6 +44,7 @@ REQUIRED = [
     'voluptuous',
     'w3lib'
 ]
+
 TEST_REQUIRED = [
     'pep8',
     'pytest',
@@ -107,12 +66,14 @@ BUILD_REQUIRED = [
     'sphinx',
     'sphinx_rtd_theme'
 ]
+
 # The rest you shouldn't have to touch too much :)
 # ------------------------------------------------
 # Except, perhaps the License and Trove Classifiers!
 # If you do change the License, remember to change the Trove Classifier for that!
 
 here = os.path.abspath(os.path.dirname(__file__))
+
 
 # Import the README and use it as the long-description.
 # Note: this will only work if 'README.rst' is present in your MANIFEST.in file!
@@ -143,62 +104,18 @@ class PyTest(TestCommand):
         sys.exit(errno)
 
 
-class UploadCommand(Command):
-    """Support setup.py upload."""
-
-    description = 'Build and publish the package.'
-    user_options = []
-
-    @staticmethod
-    def status(s):
-        """Prints things in bold."""
-        print('\033[1m{0}\033[0m'.format(s))
-
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-        try:
-            self.status('Removing previous builds…')
-            rmtree(os.path.join(here, 'dist'))
-        except OSError:
-            pass
-
-        self.status('Building Source and Wheel (universal) distribution…')
-        os.system('{0} setup.py sdist bdist_wheel --universal'.format(sys.executable))
-
-        self.status('Uploading the package to PyPi via Twine…')
-        os.system('twine upload dist/*')
-
-        sys.exit()
-
-
 # Where the magic happens:
 setup(
     name=NAME,
-    version='0.18.3',
+    version=VERSION,
     description=DESCRIPTION,
-    keywords=['steem', 'steemit', 'cryptocurrency', 'blockchain'],
-    # long_description=long_description,
+    license=open(license_file()).read(),
+    keywords=['steem' 'steep-steem', 'steemit', 'cryptocurrency', 'blockchain'],
+    long_description=open(readme_file()).read(),
     author=AUTHOR,
     author_email=EMAIL,
     url=URL,
-    packages=find_packages(exclude=('tests','scripts')),
-    entry_points={
-        'console_scripts': [
-            'steeppy=steep.cli:legacy',
-            'steep-piston=steep.cli:legacy',
-        ]
-    })
-            'console_scripts': [
-                'piston=steem.cli:legacyentry',
-                'steempy=steem.cli:legacyentry',
-                'steemtail=steem.cli:steemtailentry',
-            ],
-    },
+    packages=find_packages(exclude=('tests', 'scripts')),
     install_requires=REQUIRED,
     extras_require={
         'dev': TEST_REQUIRED + BUILD_REQUIRED,
@@ -207,11 +124,10 @@ setup(
     },
     tests_require=TEST_REQUIRED,
     include_package_data=True,
-    license='MIT',
 
     classifiers=[
-            # Trove classifiers
-            # Full list: https://pypi.python.org/pypi?%3Aaction=list_classifiers
+        # Trove classifiers
+        # Full list: https://pypi.python.org/pypi?%3Aaction=list_classifiers
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'Natural Language :: English', 'Programming Language :: Python :: 3',
@@ -222,7 +138,6 @@ setup(
     ],
     # $ setup.py publish support.
     cmdclass={
-        'upload': UploadCommand,
         'test': PyTest
     },
 )

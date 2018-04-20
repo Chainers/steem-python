@@ -1,9 +1,7 @@
-from binascii import hexlify, unhexlify
 import hashlib
-import sys
-import string
 import logging
-from steem.utils import compat_bytes
+import string
+from binascii import hexlify, unhexlify
 
 log = logging.getLogger(__name__)
 
@@ -116,7 +114,7 @@ BASE58_ALPHABET = b"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
 
 def base58decode(base58_str):
-    base58_text = base58_str.encode('ascii')
+    base58_text = bytes(base58_str, "ascii")
     n = 0
     leading_zeroes_count = 0
     for b in base58_text:
@@ -134,10 +132,7 @@ def base58decode(base58_str):
 
 
 def base58encode(hexstring):
-    byteseq = compat_bytes(hexstring, 'ascii')
-    byteseq = unhexlify(byteseq)
-    byteseq = compat_bytes(byteseq)
-
+    byteseq = bytes(unhexlify(bytes(hexstring, 'ascii')))
     n = 0
     leading_zeroes_count = 0
     for c in byteseq:

@@ -47,8 +47,7 @@ class TransactionBuilder(dict):
         self.constructTx()
 
     def appendSigner(self, account, permission):
-        assert permission in ["active", "owner",
-                              "posting"], "Invalid permission"
+        assert permission in ["active", "owner", "posting"], "Invalid permission"
         account = Account(account, steemd_instance=self.steemd)
 
         required_treshold = account[permission]["weight_threshold"]
@@ -151,12 +150,14 @@ class TransactionBuilder(dict):
             unsigned/partial transaction in order to simplify later
             signing (e.g. for multisig or coldstorage)
         """
-        accountObj = Account(account, steemd_instance=self.steemd)
-        authority = accountObj[permission]
+        account_obj = Account(account, steemd_instance=self.steemd)
+        authority = account_obj[permission]
         # We add a required_authorities to be able to identify
         # how to sign later. This is an array, because we
         # may later want to allow multiple operations per tx
-        self.update({"required_authorities": {account: authority}})
+        self.update({"required_authorities": {
+            account: authority
+        }})
         for account_auth in authority["account_auths"]:
             account_auth_account = Account(account_auth[0], steemd_instance=self.steemd)
             self["required_authorities"].update({
@@ -164,7 +165,7 @@ class TransactionBuilder(dict):
             })
 
         # Try to resolve required signatures for offline signing
-        self["missing_signatures"] = [x[0] for x in authority["key_auths"]]
+        self["missing_signatures"] = [x[0] for x in authority['key_auths']]
         # Add one recursion of keys from account_auths:
         for account_auth in authority["account_auths"]:
             account_auth_account = Account(account_auth[0], steemd_instance=self.steemd)

@@ -1,6 +1,5 @@
 import hashlib
 import logging
-import sys
 from binascii import hexlify, unhexlify
 
 from steepbase.account import PrivateKey
@@ -25,7 +24,7 @@ if not SCRYPT_MODULE:
 
             SCRYPT_MODULE = "pylibscrypt"
         except ImportError:
-            raise ImportError("Missing dependency: scrypt or pylibscrypt")
+            raise ImportError('Missing dependency: scrypt or pylibscrypt')
 
 log.debug("Using scrypt module: %s" % SCRYPT_MODULE)
 
@@ -105,8 +104,8 @@ def decrypt(encrypted_privkey, passphrase):
     decryptedhalf2 = aes.decrypt(encryptedhalf2)
     decryptedhalf1 = aes.decrypt(encryptedhalf1)
     privraw = decryptedhalf1 + decryptedhalf2
-    privraw = ('%064x' % (int(hexlify(privraw), 16) ^
-                          int(hexlify(derivedhalf1), 16)))
+    privraw = ('%064x' %
+               (int(hexlify(privraw), 16) ^ int(hexlify(derivedhalf1), 16)))
     wif = Base58(privraw)
     """ Verify Salt """
     privkey = PrivateKey(format(wif, "wif"))

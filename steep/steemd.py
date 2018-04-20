@@ -1,18 +1,17 @@
 # coding=utf-8
 import logging
+from typing import List, Any, Union, Set
 
-from funcy.seqs import first
-from steembase.chains import known_chains
-from steembase.http_client import HttpClient
-from steembase.storage import configStorage
-from steembase.transactions import SignedTransaction
-from steembase.types import PointInTime
+from funcy import first
 
-from .block import Block
-from .blockchain import Blockchain
-from .post import Post
-from .utils import resolve_identifier
-from .utils import compat_compose_dictionary
+from steep.block import Block
+from steep.consts import CONDENSER_API
+from steep.utils import resolve_identifier
+from steepbase.chains import known_chains
+from steepbase.connector import Connector
+from steepbase.storage import configStorage
+from steepbase.transactions import SignedTransaction
+from steepbase.types import PointInTime
 
 logger = logging.getLogger(__name__)
 
@@ -23,25 +22,19 @@ def get_config_node_list():
         return nodes.split(',')
 
 
-class Steemd(HttpClient):
+class Steemd(Connector):
     """ Connect to the Steem network.
 
         Args:
-
-            nodes (list): A list of Steem HTTP RPC nodes to connect to. If
-            not provided, official Steemit nodes will be used.
+            nodes (list): A list of Steem HTTP RPC nodes to connect to. If not provided, official Steemit nodes will be used.
 
         Returns:
-
-            Steemd class instance. It can be used to execute commands
-            against steem node.
+            Steemd class instance. It can be used to execute commands against steem node.
 
         Example:
 
-           If you would like to override the official Steemit nodes
-           (default), you can pass your own.  When currently used node goes
-           offline, ``Steemd`` will automatically fail-over to the next
-           available node.
+           If you would like to override the official Steemit nodes (default), you can pass your own.
+           When currently used node goes offline, ``Steemd`` will automatically fail-over to the next available node.
 
            .. code-block:: python
 
@@ -68,9 +61,7 @@ class Steemd(HttpClient):
         """
         props = self.get_dynamic_global_properties()
         chain = props["current_supply"].split(" ")[1]
-
-        assert chain in known_chains, "The chain you are connecting " + \
-                                      "to is not supported"
+        assert chain in known_chains, "The chain you are connecting to is not supported"
         return known_chains.get(chain)
 
     def get_replies(self, author, skip_own=True):
@@ -79,6 +70,8 @@ class Steemd(HttpClient):
             :param str author: Show replies for this author
             :param bool skip_own: Do not show my own replies
         """
+        from steep.post import Post
+
         state = self.get_state("/@%s/recent-replies" % author)
         replies = state["accounts"][author].get("recent_replies", [])
         discussions = []
@@ -92,6 +85,8 @@ class Steemd(HttpClient):
     def get_promoted(self):
         """ Get promoted posts
         """
+        from steep.post import Post
+
         state = self.get_state("/promoted")
         # why is there a empty key in the struct?
         promoted = state["discussion_idx"][''].get("promoted", [])
@@ -108,8 +103,9 @@ class Steemd(HttpClient):
             :param str sort: Sort the list by "recent" or "payout"
             :param str category: Only show posts in this category
             :param str start: Show posts after this post. Takes an
-                              identifier of the form ``@author/permlink``
+                              identifier of the form ``author/permlink``
         """
+        from steep.post import Post
 
         discussion_query = {
             "tag": category,
@@ -137,6 +133,9 @@ class Steemd(HttpClient):
 
             To be used in a for loop that returns an instance of `Post()`.
         """
+        from steep.blockchain import Blockchain
+        from steep.post import Post
+
         for c in Blockchain(
                 mode=kwargs.get("mode", "irreversible"),
                 steemd_instance=self,
@@ -146,8 +145,7 @@ class Steemd(HttpClient):
     @property
     def last_irreversible_block_num(self):
         """ Newest irreversible block number. """
-        return self.get_dynamic_global_properties()[
-            'last_irreversible_block_num']
+        return self.get_dynamic_global_properties()['last_irreversible_block_num']
 
     @property
     def head_block_number(self):
@@ -165,7 +163,7 @@ class Steemd(HttpClient):
             dict: Account information.
 
         """
-        return first(self.call('get_accounts', [account]))
+        return first(self.call('get_accounts', [account], api=CONDENSER_API))
 
     def get_all_usernames(self, last_user=''):
         """ Fetch the full list of STEEM usernames. """
@@ -177,7 +175,7 @@ class Steemd(HttpClient):
 
         return usernames
 
-    def _get_blocks(self, blocks):
+    def _get_blocks(self, blocks: Union[List[int], Set[int]]):
         """ Fetch multiple blocks from steemd at once.
 
         Warning: This method does not ensure that all blocks are returned,
@@ -191,23 +189,17 @@ class Steemd(HttpClient):
             A generator with results.
 
         """
-        results = self.call_multi_with_futures(
-            'get_block', blocks, max_workers=10)
-        return (compat_compose_dictionary(x, block_num=int(x['block_id'][:8], base=16))
-                for x in results if x)
+        results = self.call_multi_with_futures('get_block', blocks, api=CONDENSER_API, max_workers=10)
+        return ({**x, 'block_num': int(x['previous'][:8], base=16) + 1} for x in results if x)
 
-    def get_blocks(self, block_nums):
+    def get_blocks(self, block_nums: List[int]):
         """ Fetch multiple blocks from steemd at once, given a range.
 
         Args:
-
-            block_nums (list): A list of all block numbers we would like to
-            tech.
+            block_nums (list): A list of all block numbers we would like to tech.
 
         Returns:
-
             dict: An ensured and ordered list of all `get_block` results.
-
         """
         required = set(block_nums)
         available = set()
@@ -223,15 +215,12 @@ class Steemd(HttpClient):
 
         return [blocks[x] for x in block_nums]
 
-    def get_blocks_range(self, start, end):
+    def get_blocks_range(self, start: int, end: int):
         """ Fetch multiple blocks from steemd at once, given a range.
 
         Args:
-
             start (int): The number of the block to start with
-
-            end (int): The number of the block at the end of the range. Not
-            included in results.
+            end (int): The number of the block at the end of the range. Not included in results.
 
         Returns:
             dict: An ensured and ordered list of all `get_block` results.
@@ -262,7 +251,7 @@ class Steemd(HttpClient):
                  'reward_balance': '555660.895 STEEM'}
 
         """
-        return self.call('get_reward_fund', fund_name, api='database_api')
+        return self.call('get_reward_fund', fund_name, api=CONDENSER_API)
 
     def get_expiring_vesting_delegations(self, account,
                                          start, limit):
@@ -272,99 +261,87 @@ class Steemd(HttpClient):
             account,
             start,
             limit,
-            api='database_api')
+            api=CONDENSER_API)
 
     def get_trending_tags(self, after_tag, limit):
         """ get_trending_tags """
-        return self.call(
-            'get_trending_tags', after_tag, limit, api='database_api')
+        return self.call('get_trending_tags', after_tag, limit, api=CONDENSER_API)
 
     def get_tags_used_by_author(self, account):
         """ get_tags_used_by_author """
-        return self.call(
-            'get_tags_used_by_author', account, api='database_api')
+        return self.call('get_tags_used_by_author', account, api=CONDENSER_API)
 
     def get_discussions_by_trending(self, discussion_query):
         """ get_discussions_by_trending """
-        return self.call(
-            'get_discussions_by_trending',
-            discussion_query,
-            api='database_api')
+        return self.call('get_discussions_by_trending', discussion_query, api=CONDENSER_API)
 
     def get_comment_discussions_by_payout(self, discussion_query):
         """ get_comment_discussions_by_payout """
-        return self.call(
-            'get_comment_discussions_by_payout',
-            discussion_query,
-            api='database_api')
+        return self.call('get_comment_discussions_by_payout', discussion_query, api=CONDENSER_API)
 
     def get_post_discussions_by_payout(self, discussion_query):
         """ get_post_discussions_by_payout """
         return self.call(
             'get_post_discussions_by_payout',
             discussion_query,
-            api='database_api')
+            api=CONDENSER_API)
 
     def get_discussions_by_created(self, discussion_query):
         """ get_discussions_by_created """
-        return self.call(
-            'get_discussions_by_created', discussion_query, api='database_api')
+        return self.call('get_discussions_by_created', discussion_query, api=CONDENSER_API)
 
     def get_discussions_by_active(self, discussion_query):
         """ get_discussions_by_active """
         return self.call(
-            'get_discussions_by_active', discussion_query, api='database_api')
+            'get_discussions_by_active', discussion_query, api=CONDENSER_API)
 
     def get_discussions_by_cashout(self, discussion_query):
         """ get_discussions_by_cashout """
-        return self.call(
-            'get_discussions_by_cashout', discussion_query, api='database_api')
+        return self.call('get_discussions_by_cashout', discussion_query, api=CONDENSER_API)
 
     def get_discussions_by_payout(self, discussion_query):
         """ get_discussions_by_payout """
-        return self.call(
-            'get_discussions_by_payout', discussion_query, api='database_api')
+        return self.call('get_discussions_by_payout', discussion_query, api=CONDENSER_API)
 
     def get_discussions_by_votes(self, discussion_query):
         """ get_discussions_by_votes """
-        return self.call(
-            'get_discussions_by_votes', discussion_query, api='database_api')
+        return self.call('get_discussions_by_votes', discussion_query, api=CONDENSER_API)
 
     def get_discussions_by_children(self, discussion_query):
         """ get_discussions_by_children """
         return self.call(
             'get_discussions_by_children',
             discussion_query,
-            api='database_api')
+            api=CONDENSER_API)
 
     def get_discussions_by_hot(self, discussion_query):
         """ get_discussions_by_hot """
         return self.call(
-            'get_discussions_by_hot', discussion_query, api='database_api')
+            'get_discussions_by_hot', discussion_query, api=CONDENSER_API)
 
     def get_discussions_by_feed(self, discussion_query):
         """ get_discussions_by_feed """
         return self.call(
-            'get_discussions_by_feed', discussion_query, api='database_api')
+            'get_discussions_by_feed', discussion_query, api=CONDENSER_API)
 
     def get_discussions_by_blog(self, discussion_query):
         """ get_discussions_by_blog """
         return self.call(
-            'get_discussions_by_blog', discussion_query, api='database_api')
+            'get_discussions_by_blog', discussion_query, api=CONDENSER_API)
 
     def get_discussions_by_comments(self, discussion_query):
         """ get_discussions_by_comments """
         return self.call(
             'get_discussions_by_comments',
             discussion_query,
-            api='database_api')
+            api=CONDENSER_API)
 
     def get_discussions_by_promoted(self, discussion_query):
         """ get_discussions_by_promoted """
         return self.call(
             'get_discussions_by_promoted',
             discussion_query,
-            api='database_api')
+            api=CONDENSER_API)
 
     def get_block_header(self, block_num):
         """ Get block headers, given a block number.
@@ -391,7 +368,7 @@ class Steemd(HttpClient):
                  '4ddc419e531cccee6da660057d606d11aab9f3a5',
                  'witness': 'chainsquad.com'}
         """
-        return self.call('get_block_header', block_num, api='database_api')
+        return self.call('get_block_header', block_num, api=CONDENSER_API)
 
     def get_block(self, block_num):
         """ Get the full block, transactions and all, given a block number.
@@ -403,24 +380,24 @@ class Steemd(HttpClient):
             dict in a JSON compatible format.
 
         """
-        return self.call('get_block', block_num, api='database_api')
+        return self.call('get_block', block_num, api=CONDENSER_API)
 
     def get_ops_in_block(self, block_num, virtual_only):
         """ get_ops_in_block """
         return self.call(
-            'get_ops_in_block', block_num, virtual_only, api='database_api')
+            'get_ops_in_block', block_num, virtual_only, api=CONDENSER_API)
 
     def get_state(self, path):
         """ get_state """
-        return self.call('get_state', path, api='database_api')
+        return self.call('get_state', path, api=CONDENSER_API)
 
     def get_config(self):
         """ Get internal chain configuration. """
-        return self.call('get_config', api='database_api')
+        return self.call('get_config', api=CONDENSER_API)
 
     def get_dynamic_global_properties(self):
         """ get_dynamic_global_properties """
-        return self.call('get_dynamic_global_properties', api='database_api')
+        return self.call('get_dynamic_global_properties', api=CONDENSER_API)
 
     def get_chain_properties(self):
         """ Get witness elected chain properties.
@@ -432,15 +409,14 @@ class Steemd(HttpClient):
              'sbd_interest_rate': 250}
 
         """
-        return self.call('get_chain_properties', api='database_api')
+        return self.call('get_chain_properties', api=CONDENSER_API)
 
     def get_feed_history(self):
         """ Get the hourly averages of witness reported STEEM/SBD prices.
 
         ::
 
-            {'current_median_history':
-                {'base': '0.093 SBD', 'quote': '1.010 STEEM'},
+            {'current_median_history': {'base': '0.093 SBD', 'quote': '1.010 STEEM'},
              'id': 0,
              'price_history': [{'base': '0.092 SBD', 'quote': '1.010 STEEM'},
               {'base': '0.093 SBD', 'quote': '1.020 STEEM'},
@@ -449,7 +425,7 @@ class Steemd(HttpClient):
               {'base': '0.093 SBD', 'quote': '1.010 STEEM'},
 
         """
-        return self.call('get_feed_history', api='database_api')
+        return self.call('get_feed_history', api=CONDENSER_API)
 
     def get_current_median_history_price(self):
         """ Get the average STEEM/SBD price.
@@ -461,12 +437,11 @@ class Steemd(HttpClient):
             {'base': '0.093 SBD', 'quote': '1.010 STEEM'}
 
         """
-        return self.call(
-            'get_current_median_history_price', api='database_api')
+        return self.call('get_current_median_history_price', api=CONDENSER_API)
 
     def get_witness_schedule(self):
         """ get_witness_schedule """
-        return self.call('get_witness_schedule', api='database_api')
+        return self.call('get_witness_schedule', api=CONDENSER_API)
 
     def get_hardfork_version(self):
         """ Get the current version of the chain.
@@ -475,78 +450,63 @@ class Steemd(HttpClient):
             This is not the same as latest minor version.
 
         """
-        return self.call('get_hardfork_version', api='database_api')
+        return self.call('get_hardfork_version', api=CONDENSER_API)
 
     def get_next_scheduled_hardfork(self):
         """ get_next_scheduled_hardfork """
-        return self.call('get_next_scheduled_hardfork', api='database_api')
+        return self.call('get_next_scheduled_hardfork', api=CONDENSER_API)
 
-    def get_accounts(self, account_names):
-        """ Lookup account information such as user profile, public keys,
-        balances, etc.
+    def get_accounts(self, account_names: list):
+        """ Lookup account information such as user profile, public keys, balances, etc.
 
-        This method is same as ``get_account``, but supports querying for
-        multiple accounts at the time.
-
+        This method is same as ``get_account``, but supports querying for multiple accounts at the time.
         """
-        return self.call('get_accounts', account_names, api='database_api')
+        return self.call('get_accounts', account_names, api=CONDENSER_API)
 
-    def get_account_references(self, account_id):
+    def get_account_references(self, account_id: int):
         """ get_account_references """
-        return self.call(
-            'get_account_references', account_id, api='database_api')
+        return self.call('get_account_references', account_id, api=CONDENSER_API)
 
-    def lookup_account_names(self, account_names):
+    def lookup_account_names(self, account_names: list):
         """ lookup_account_names """
-        return self.call(
-            'lookup_account_names', account_names, api='database_api')
+        return self.call('lookup_account_names', account_names, api=CONDENSER_API)
 
     def lookup_accounts(self, after, limit):
         """Get a list of usernames from all registered accounts.
 
         Args:
-
-            after (str, int): Username to start with. If '', 0 or -1, it
-            will start at beginning.
-
+            after (str, int): Username to start with. If '', 0 or -1, it will start at beginning.
             limit (int): How many results to return.
 
         Returns:
             list: List of usernames in requested chunk.
 
         """
-        return self.call('lookup_accounts', after, limit, api='database_api')
+        return self.call('lookup_accounts', after, limit, api=CONDENSER_API)
 
     def get_account_count(self):
         """ How many accounts are currently registered on STEEM? """
-        return self.call('get_account_count', api='database_api')
+        return self.call('get_account_count', api=CONDENSER_API)
 
-    def get_conversion_requests(self, account):
+    def get_conversion_requests(self, account: str):
         """ get_conversion_requests """
         return self.call(
-            'get_conversion_requests', account, api='database_api')
+            'get_conversion_requests', account, api=CONDENSER_API)
 
-    def get_account_history(self, account, index_from, limit):
+    def get_account_history(self, account: str, index_from: int, limit: int):
         """ History of all operations for a given account.
 
         Args:
-
            account (str): STEEM username that we are looking up.
-
-           index_from (int): The highest database index we take as a
-           starting point.
-
+           index_from (int): The highest database index we take as a starting point.
            limit (int): How many items are we interested in.
 
         Returns:
-
            list: List of operations.
 
         Example:
-
-           To get the latest (newest) operations from a given user
-           ``furion``, we should set the ``index_from`` to -1.  This is the
-           same as saying `give me the highest index there is`.
+           To get the latest (newest) operations from a given user ``furion``, we should set the ``index_from`` to -1.
+           This is the same as saying `give me the highest index there is`.
 
            .. code-block :: python
 
@@ -593,13 +553,10 @@ class Steemd(HttpClient):
                  'trx_in_block': 7,
                  'virtual_op': 0}]]
 
-           If we want to query for a particular range of indexes, we need
-           to consider both `index_from` and `limit` fields.  Remember,
-           `index_from` works backwards, so if we set it to 100, we will
-           get items `100, 99, 98, 97...`.
+           If we want to query for a particular range of indexes, we need to consider both `index_from` and `limit` fields.
+           Remember, `index_from` works backwards, so if we set it to 100, we will get items `100, 99, 98, 97...`.
 
-           For example, if we'd like to get the first 100 operations the
-           user did, we would write:
+           For example, if we'd like to get the first 100 operations the user did, we would write:
 
            .. code-block:: python
 
@@ -613,51 +570,35 @@ class Steemd(HttpClient):
 
 
         """
-        return self.call(
-            'get_account_history',
-            account,
-            index_from,
-            limit,
-            api='database_api')
+        return self.call('get_account_history', account, index_from, limit, api=CONDENSER_API)
 
-    def get_owner_history(self, account):
+    def get_owner_history(self, account: str):
         """ get_owner_history """
-        return self.call('get_owner_history', account, api='database_api')
+        return self.call('get_owner_history', account, api=CONDENSER_API)
 
-    def get_recovery_request(self, account):
+    def get_recovery_request(self, account: str):
         """ get_recovery_request """
-        return self.call('get_recovery_request', account, api='database_api')
+        return self.call('get_recovery_request', account, api=CONDENSER_API)
 
-    def get_escrow(self, from_account, escrow_id):
+    def get_escrow(self, from_account: str, escrow_id: int):
         """ get_escrow """
-        return self.call(
-            'get_escrow', from_account, escrow_id, api='database_api')
+        return self.call('get_escrow', from_account, escrow_id, api=CONDENSER_API)
 
-    def get_withdraw_routes(self, account, withdraw_route_type):
+    def get_withdraw_routes(self, account: str, withdraw_route_type: str):
         """ get_withdraw_routes """
-        return self.call(
-            'get_withdraw_routes',
-            account,
-            withdraw_route_type,
-            api='database_api')
+        return self.call('get_withdraw_routes', account, withdraw_route_type, api=CONDENSER_API)
 
-    def get_account_bandwidth(self, account, bandwidth_type):
+    def get_account_bandwidth(self, account: str, bandwidth_type: object):
         """ get_account_bandwidth """
-        return self.call(
-            'get_account_bandwidth',
-            account,
-            bandwidth_type,
-            api='database_api')
+        return self.call('get_account_bandwidth', account, bandwidth_type, api=CONDENSER_API)
 
-    def get_savings_withdraw_from(self, account):
+    def get_savings_withdraw_from(self, account: str):
         """ get_savings_withdraw_from """
-        return self.call(
-            'get_savings_withdraw_from', account, api='database_api')
+        return self.call('get_savings_withdraw_from', account, api=CONDENSER_API)
 
-    def get_savings_withdraw_to(self, account):
+    def get_savings_withdraw_to(self, account: str):
         """ get_savings_withdraw_to """
-        return self.call(
-            'get_savings_withdraw_to', account, api='database_api')
+        return self.call('get_savings_withdraw_to', account, api=CONDENSER_API)
 
     def get_order_book(self, limit):
         """ Get the internal market order book.
@@ -707,13 +648,13 @@ class Steemd(HttpClient):
 
 
         """
-        return self.call('get_order_book', limit, api='database_api')
+        return self.call('get_order_book', limit, api=CONDENSER_API)
 
-    def get_open_orders(self, account):
+    def get_open_orders(self, account: str):
         """ get_open_orders """
-        return self.call('get_open_orders', account, api='database_api')
+        return self.call('get_open_orders', account, api=CONDENSER_API)
 
-    def get_liquidity_queue(self, start_account, limit):
+    def get_liquidity_queue(self, start_account: str, limit: int):
         """ Get the liquidity queue.
 
         Warning:
@@ -722,50 +663,42 @@ class Steemd(HttpClient):
             in the future.
 
         """
-        return self.call(
-            'get_liquidity_queue', start_account, limit, api='database_api')
+        return self.call('get_liquidity_queue', start_account, limit, api=CONDENSER_API)
 
-    def get_transaction_hex(self, signed_transaction):
+    def get_transaction_hex(self, signed_transaction: SignedTransaction):
         """ get_transaction_hex """
-        return self.call(
-            'get_transaction_hex', signed_transaction, api='database_api')
+        return self.call('get_transaction_hex', signed_transaction, api=CONDENSER_API)
 
-    def get_transaction(self, transaction_id):
+    def get_transaction(self, transaction_id: str):
         """ get_transaction """
-        return self.call('get_transaction', transaction_id, api='database_api')
+        return self.call('get_transaction', transaction_id, api=CONDENSER_API)
 
-    def get_required_signatures(self, signed_transaction,
-                                available_keys):
+    def get_required_signatures(self, signed_transaction: SignedTransaction, available_keys: list):
         """ get_required_signatures """
         return self.call(
             'get_required_signatures',
             signed_transaction,
             available_keys,
-            api='database_api')
+            api=CONDENSER_API)
 
-    def get_potential_signatures(self, signed_transaction):
+    def get_potential_signatures(self, signed_transaction: SignedTransaction):
         """ get_potential_signatures """
-        return self.call(
-            'get_potential_signatures', signed_transaction, api='database_api')
+        return self.call('get_potential_signatures', signed_transaction, api=CONDENSER_API)
 
-    def verify_authority(self, signed_transaction):
+    def verify_authority(self, signed_transaction: SignedTransaction):
         """ verify_authority """
-        return self.call(
-            'verify_authority', signed_transaction, api='database_api')
+        return self.call('verify_authority', signed_transaction, api=CONDENSER_API)
 
-    def verify_account_authority(self, account, keys):
+    def verify_account_authority(self, account: str, keys: list):
         """ verify_account_authority """
-        return self.call(
-            'verify_account_authority', account, keys, api='database_api')
+        return self.call('verify_account_authority', account, keys, api=CONDENSER_API)
 
-    def get_active_votes(self, author, permlink):
+    def get_active_votes(self, author: str, permlink: str):
         """ Get all votes for the given post.
 
         Args:
             author (str): OP's STEEM username.
-
-            permlink (str): Post identifier following the username. It
-            looks like slug-ified title.
+            permlink (str): Post identifier following the username. It looks like slug-ified title.
 
         Returns:
             list: List of votes.
@@ -794,8 +727,7 @@ class Steemd(HttpClient):
                  'voter': 'flourish',
                  'weight': '2334690471157'}]
         """
-        return self.call(
-            'get_active_votes', author, permlink, api='database_api')
+        return self.call('get_active_votes', author, permlink, api=CONDENSER_API)
 
     def get_account_votes(self, account):
         """ All votes the given account ever made.
@@ -817,20 +749,21 @@ class Steemd(HttpClient):
 
 
         """
-        return self.call('get_account_votes', account, api='database_api')
+        return self.call('get_account_votes', account, api=CONDENSER_API)
 
     def get_content(self, author, permlink):
         """ get_content """
-        return self.call('get_content', author, permlink, api='database_api')
+        return self.call('get_content', author, permlink, api=CONDENSER_API)
 
     def get_content_replies(self, author, permlink):
         """ get_content_replies """
-        return self.call(
-            'get_content_replies', author, permlink, api='database_api')
+        return self.call('get_content_replies', author, permlink, api=CONDENSER_API)
 
-    def get_discussions_by_author_before_date(
-            self, author, start_permlink, before_date,
-            limit):
+    def get_discussions_by_author_before_date(self,
+                                              author: str,
+                                              start_permlink: str,
+                                              before_date: PointInTime,
+                                              limit: int):
         """ get_discussions_by_author_before_date """
         return self.call(
             'get_discussions_by_author_before_date',
@@ -838,68 +771,61 @@ class Steemd(HttpClient):
             start_permlink,
             before_date,
             limit,
-            api='database_api')
+            api=CONDENSER_API)
 
-    def get_replies_by_last_update(self, account, start_permlink,
-                                   limit):
+    def get_replies_by_last_update(self, account: str, start_permlink: str, limit: int):
         """ get_replies_by_last_update """
         return self.call(
             'get_replies_by_last_update',
             account,
             start_permlink,
             limit,
-            api='database_api')
+            api=CONDENSER_API)
 
-    def get_witnesses(self, witness_ids):
+    def get_witnesses(self, witness_ids: list):
         """ get_witnesses """
-        return self.call('get_witnesses', witness_ids, api='database_api')
+        return self.call('get_witnesses', witness_ids, api=CONDENSER_API)
 
-    def get_witness_by_account(self, account):
+    def get_witness_by_account(self, account: str):
         """ get_witness_by_account """
-        return self.call('get_witness_by_account', account, api='database_api')
+        return self.call('get_witness_by_account', account, api=CONDENSER_API)
 
-    def get_witnesses_by_vote(self, from_account, limit):
+    def get_witnesses_by_vote(self, from_account: str, limit: int):
         """ get_witnesses_by_vote """
-        return self.call(
-            'get_witnesses_by_vote', from_account, limit, api='database_api')
+        return self.call('get_witnesses_by_vote', from_account, limit, api=CONDENSER_API)
 
-    def lookup_witness_accounts(self, from_account, limit):
+    def lookup_witness_accounts(self, from_account: str, limit: int):
         """ lookup_witness_accounts """
-        return self.call(
-            'lookup_witness_accounts', from_account, limit, api='database_api')
+        return self.call('lookup_witness_accounts', from_account, limit, api=CONDENSER_API)
 
     def get_witness_count(self):
         """ get_witness_count """
-        return self.call('get_witness_count', api='database_api')
+        return self.call('get_witness_count', api=CONDENSER_API)
 
     def get_active_witnesses(self):
         """ Get a list of currently active witnesses. """
-        return self.call('get_active_witnesses', api='database_api')
+        return self.call('get_active_witnesses', api=CONDENSER_API)
 
-    def get_vesting_delegations(self, account, from_account,
-                                limit):
+    def get_vesting_delegations(self, account: str, from_account: str, limit: int):
         """ get_vesting_delegations """
         return self.call(
             'get_vesting_delegations',
             account,
             from_account,
             limit,
-            api='database_api')
+            api=CONDENSER_API)
 
-    def login(self, username, password):
-        """ login """
-        return self.call('login', username, password, api='login_api')
+    def login(self, username: str, password: str):
+        raise DeprecationWarning('This method not supported!')
 
-    def get_api_by_name(self, api_name):
-        """ get_api_by_name """
-        return self.call('get_api_by_name', api_name, api='login_api')
+    def get_api_by_name(self, api_name: str):
+        raise DeprecationWarning('This method not supported!')
 
     def get_version(self):
         """ Get steemd version of the node currently connected to. """
-        return self.call('get_version', api='login_api')
+        return self.call('get_version', api=CONDENSER_API)
 
-    def get_followers(self, account, start_follower,
-                      follow_type, limit):
+    def get_followers(self, account: str, start_follower: str, follow_type: str, limit: int):
         """ get_followers """
         return self.call(
             'get_followers',
@@ -907,10 +833,9 @@ class Steemd(HttpClient):
             start_follower,
             follow_type,
             limit,
-            api='follow_api')
+            api=CONDENSER_API)
 
-    def get_following(self, account, start_follower,
-                      follow_type, limit):
+    def get_following(self, account: str, start_follower: str, follow_type: str, limit: int):
         """ get_following """
         return self.call(
             'get_following',
@@ -918,111 +843,94 @@ class Steemd(HttpClient):
             start_follower,
             follow_type,
             limit,
-            api='follow_api')
+            api=CONDENSER_API)
 
-    def get_follow_count(self, account):
+    def get_follow_count(self, account: str):
         """ get_follow_count """
-        return self.call('get_follow_count', account, api='follow_api')
+        return self.call('get_follow_count', account, api=CONDENSER_API)
 
-    def get_feed_entries(self, account, entry_id, limit):
+    def get_feed_entries(self, account: str, entry_id: int, limit: int):
         """ get_feed_entries """
-        return self.call(
-            'get_feed_entries', account, entry_id, limit, api='follow_api')
+        return self.call('get_feed_entries', account, entry_id, limit, api=CONDENSER_API)
 
-    def get_feed(self, account, entry_id, limit):
+    def get_feed(self, account: str, entry_id: int, limit: int):
         """ get_feed """
-        return self.call(
-            'get_feed', account, entry_id, limit, api='follow_api')
+        return self.call('get_feed', account, entry_id, limit, api=CONDENSER_API)
 
-    def get_blog_entries(self, account, entry_id, limit):
+    def get_blog_entries(self, account: str, entry_id: int, limit: int):
         """ get_blog_entries """
-        return self.call(
-            'get_blog_entries', account, entry_id, limit, api='follow_api')
+        return self.call('get_blog_entries', account, entry_id, limit, api=CONDENSER_API)
 
-    def get_blog(self, account, entry_id, limit):
+    def get_blog(self, account: str, entry_id: int, limit: int):
         """ get_blog """
-        return self.call(
-            'get_blog', account, entry_id, limit, api='follow_api')
+        return self.call('get_blog', account, entry_id, limit, api=CONDENSER_API)
 
-    def get_account_reputations(self, account, limit):
+    def get_account_reputations(self, account: str, limit: int):
         """ get_account_reputations """
-        return self.call(
-            'get_account_reputations', account, limit, api='follow_api')
+        return self.call('get_account_reputations', account, limit, api=CONDENSER_API)
 
-    def get_reblogged_by(self, author, permlink):
+    def get_reblogged_by(self, author: str, permlink: str):
         """ get_reblogged_by """
-        return self.call(
-            'get_reblogged_by', author, permlink, api='follow_api')
+        return self.call('get_reblogged_by', author, permlink, api=CONDENSER_API)
 
-    def get_blog_authors(self, blog_account):
+    def get_blog_authors(self, blog_account: str):
         """ get_blog_authors """
-        return self.call('get_blog_authors', blog_account, api='follow_api')
+        return self.call('get_blog_authors', blog_account, api=CONDENSER_API)
 
-    def broadcast_transaction(self, signed_transaction):
+    def broadcast_transaction(self, signed_transaction: SignedTransaction):
         """ broadcast_transaction """
         return self.call(
             'broadcast_transaction',
             signed_transaction,
-            api='network_broadcast_api')
+            api=CONDENSER_API)
 
-    def broadcast_transaction_synchronous(
-            self, signed_transaction):
+    def broadcast_transaction_synchronous(self, signed_transaction: SignedTransaction):
         """ broadcast_transaction_synchronous """
-        return self.call(
-            'broadcast_transaction_synchronous',
-            signed_transaction,
-            api='network_broadcast_api')
+        return self.call('broadcast_transaction_synchronous', signed_transaction, api=CONDENSER_API)
 
-    def broadcast_block(self, block):
+    def broadcast_block(self, block: Block):
         """ broadcast_block """
-        return self.call('broadcast_block', block, api='network_broadcast_api')
+        return self.call('broadcast_block', block, api=CONDENSER_API)
 
-    def set_max_block_age(self, max_block_age):
+    def set_max_block_age(self, max_block_age: int):
         """ set_max_block_age """
-        return self.call(
-            'set_max_block_age', max_block_age, api='network_broadcast_api')
+        return self.call('set_max_block_age', max_block_age, api=CONDENSER_API)
 
     def get_ticker(self):
         """ Returns the market ticker for the internal SBD:STEEM market. """
-        return self.call('get_ticker', api='market_history_api')
+        return self.call('get_ticker', api=CONDENSER_API)
 
     def get_volume(self):
         """ Returns the market volume for the past 24 hours. """
-        return self.call('get_volume', api='market_history_api')
+        return self.call('get_volume', api=CONDENSER_API)
 
-    def get_trade_history(self, start, end,
-                          limit):
+    def get_trade_history(self, start: PointInTime, end: PointInTime, limit: int):
         """ Returns the trade history for the internal SBD:STEEM market. """
-        return self.call(
-            'get_trade_history', start, end, limit, api='market_history_api')
+        return self.call('get_trade_history', start, end, limit, api=CONDENSER_API)
 
-    def get_recent_trades(self, limit):
-        """ Returns the N most recent trades for the internal SBD:STEEM
-        market. """
+    def get_recent_trades(self, limit: int) -> List[Any]:
+        """ Returns the N most recent trades for the internal GBG:GOLOS market. """
+        return self.call('get_recent_trades', limit, api=CONDENSER_API)
 
-        return self.call('get_recent_trades', limit, api='market_history_api')
-
-    def get_market_history(self, bucket_seconds, start,
-                           end):
+    def get_market_history(self, bucket_seconds: int, start: PointInTime, end: PointInTime):
         """ Returns the market history for the internal SBD:STEEM market. """
         return self.call(
             'get_market_history',
             bucket_seconds,
             start,
             end,
-            api='market_history_api')
+            api=CONDENSER_API
+        )
 
     def get_market_history_buckets(self):
         """ Returns the bucket seconds being tracked by the plugin. """
-        return self.call(
-            'get_market_history_buckets', api='market_history_api')
+        return self.call('get_market_history_buckets', api=CONDENSER_API)
 
-    def get_key_references(self, public_keys):
+    def get_key_references(self, public_keys: List[str]):
         """ get_key_references """
         if type(public_keys) == str:
             public_keys = [public_keys]
-        return self.call(
-            'get_key_references', public_keys, api='account_by_key_api')
+        return self.call('get_key_references', public_keys, api=CONDENSER_API)
 
 
 if __name__ == '__main__':

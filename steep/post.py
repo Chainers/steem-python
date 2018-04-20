@@ -3,18 +3,14 @@ import logging
 import re
 from datetime import datetime
 
-from dateutil.parser import parse
 from funcy import walk_values, get_in, silent, flatten
 
 from steep.amount import Amount
 from steep.commit import Commit
 from steep.instance import shared_steemd_instance
-from steep.utils import construct_identifier, resolve_identifier, calculate_trending, calculate_hot
-from steep.utils import parse_time, remove_from_dict
-from steepbase.exceptions import (
-    PostDoesNotExist,
-    VotingInvalidOnArchivedPost,
-)
+from steep.utils import construct_identifier, resolve_identifier, parse_time, remove_from_dict, calculate_trending, \
+    calculate_hot
+from steepbase.exceptions import PostDoesNotExist, VotingInvalidOnArchivedPost
 from steepbase.operations import CommentOptions
 
 log = logging.getLogger(__name__)
@@ -25,10 +21,7 @@ class Post(dict):
         abstraction layer for Comments in Steem
 
         Args:
-
-            post (str or dict): ``@author/permlink`` or raw ``comment`` as
-            dictionary.
-
+            post (str or dict): ``@author/permlink`` or raw ``comment`` as dictionary.
             steemd_instance (Steemd): Steemd node to connect to
 
     """
@@ -45,9 +38,7 @@ class Post(dict):
         if isinstance(post, str):  # From identifier
             self.identifier = self.parse_identifier(post)
         elif isinstance(post, dict) and "author" in post and "permlink" in post:
-            post["author"] = post["author"].replace('@', '')
-            self.identifier = construct_identifier('@', post["author"],
-                                                   post["permlink"])
+            self.identifier = construct_identifier(post["author"], post["permlink"])
         else:
             raise ValueError("Post expects an identifier or a dict "
                              "with author and permlink!")
@@ -56,8 +47,8 @@ class Post(dict):
 
     @staticmethod
     def parse_identifier(uri):
-        """ Extract post identifier from post URL. """
-        return '@%s' % uri.split('@')[-1]
+        """ Extract canonical post id/url (i.e. strip any leading `@`). """
+        return uri.split('@')[-1]
 
     def refresh(self):
         post_author, post_permlink = resolve_identifier(self.identifier)
@@ -106,10 +97,10 @@ class Post(dict):
         post['community'] = ''
         if isinstance(post['json_metadata'], dict):
             if post["depth"] == 0:
-                tags = get_in(post, ['json_metadata', 'tags'], default=[])
-                if post["parent_permlink"] not in tags:
-                    tags = [post["parent_permlink"]] + tags
-                post["tags"] = tags
+                tags = [post["parent_permlink"]]
+                tags += get_in(post, ['json_metadata', 'tags'], default=[])
+                tags_set = set(tags)
+                post["tags"] = [tag for tag in tags if tag not in tags_set]
 
             post['community'] = get_in(post, ['json_metadata', 'community'], default='')
 
@@ -151,7 +142,7 @@ class Post(dict):
             category = m.group(1)
             author = m.group(2)
             permlink = m.group(3)
-            return construct_identifier('@', author, permlink), category
+            return construct_identifier(author, permlink), category
 
     def get_replies(self):
         """ Return **first-level** comments of the post.
@@ -164,7 +155,7 @@ class Post(dict):
     def get_all_replies(root_post=None, comments=list(), all_comments=list()):
         """ Recursively fetch all the child comments, and return them as a list.
 
-        Usage: all_comments = Post.get_all_replies(Post('@foo/bar'))
+        Usage: all_comments = Post.get_all_replies(Post('foo/bar'))
         """
         # see if our root post has any comments
         if root_post:
@@ -176,8 +167,7 @@ class Post(dict):
         children = list(flatten([list(x.get_replies()) for x in comments]))
         if not children:
             return all_comments or comments
-        return Post.get_all_replies(
-            comments=children, all_comments=comments + children)
+        return Post.get_all_replies(comments=children, all_comments=comments + children)
 
     @property
     def reward(self):
@@ -189,7 +179,7 @@ class Post(dict):
     def time_elapsed(self):
         """Return a timedelta on how old the post is.
         """
-        return datetime.utcnow() - parse(self['created'])
+        return datetime.utcnow() - self['created']
 
     def is_main_post(self):
         """ Retuns True if main post, and False if this is a comment (reply).
@@ -202,16 +192,16 @@ class Post(dict):
         return self['depth'] > 0
 
     def curation_reward_pct(self):
-        """ If post is less than 30 minutes old, it will incur a curation reward penalty.
-        """
+        """ If post is less than 30 minutes old, it will incur a curation
+        reward penalty.  """
         reward = (self.time_elapsed().seconds / 1800) * 100
         if reward > 100:
             reward = 100
         return reward
 
     def export(self):
-        """ This method returns a dictionary that is type-safe to store as JSON or in a database.
-        """
+        """ This method returns a dictionary that is type-safe to store as
+        JSON or in a database.  """
         self.refresh()
 
         # Remove Steem instance object
@@ -252,7 +242,7 @@ class Post(dict):
         """
         # Test if post is archived, if so, voting is worthless but just
         # pollutes the blockchain and account history
-        if not self.get('net_rshares'):
+        if self.is_main_post() and self.get('net_rshares') is None:
             raise VotingInvalidOnArchivedPost
         return self.commit.vote(self.identifier, weight, account=voter)
 
@@ -328,10 +318,10 @@ class Post(dict):
                 "permlink": self["permlink"],
                 "max_accepted_payout":
                     options.get("max_accepted_payout", str(self["max_accepted_payout"])),
-                "percent_steem_dollars": int(
-                    options.get("percent_steem_dollars",
-                                self["percent_steem_dollars"] / 100
-                                ) * 100),
+                "percent_steem_dollars":
+                    int(
+                        options.get("percent_steem_dollars",
+                                    self["percent_steem_dollars"] / 100) * 100),
                 "allow_votes":
                     options.get("allow_votes", self["allow_votes"]),
                 "allow_curation_rewards":

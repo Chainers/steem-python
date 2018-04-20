@@ -98,7 +98,7 @@ class GrapheneObject(object):
     def __bytes__(self):
         if self.data is None:
             return bytes()
-        b = b""
+        b = b''
         for name, value in self.data.items():
             if isinstance(value, str):
                 b += bytes(value, 'utf-8')
@@ -122,9 +122,6 @@ class GrapheneObject(object):
 
     def __str__(self):
         return json.dumps(self.__json__())
-
-    def toJson(self):
-        return self.__json__()
 
     def json(self):
         return self.__json__()
@@ -693,6 +690,7 @@ class CommentOptions(GrapheneObject):
             # handle beneficiaries
             extensions = Array([])
             beneficiaries = kwargs.get('beneficiaries')
+            # TODO: Explore this 2 lines
             if not beneficiaries and kwargs['extensions'] and len(kwargs['extensions'][0]) == 2:
                 beneficiaries = kwargs['extensions'][0][1].get('beneficiaries')
             if beneficiaries and type(beneficiaries) == list:

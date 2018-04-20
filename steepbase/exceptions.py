@@ -25,7 +25,7 @@ class NumRetriesReached(Exception):
     pass
 
 
-class InvalidNodeSchemas(Exception):
+class InvalidNodeSchemes(Exception):
     pass
 
 

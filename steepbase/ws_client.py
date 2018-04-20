@@ -83,7 +83,7 @@ class WsClient(BaseClient):
                     )
                     time.sleep(sleeptime)
 
-    def exec(self, name, *args, api=None, return_with_args=None, _ret_cnt=0):
+    def call(self, name, *args, api=None, return_with_args=None, _ret_cnt=0):
         body = WsClient.json_rpc_body(name, *args, api=api)
 
         response = None
@@ -104,7 +104,7 @@ class WsClient(BaseClient):
                 sleeptime = (cnt - 1) * 2 if cnt < 10 else 10
                 if sleeptime:
                     logger.warning(
-                        "Lost connection to node during exec(): %s (%d/%d) "
+                        "Lost connection to node during call(): %s (%d/%d) "
                         % (self.url, cnt, self.num_retries) +
                         "Retrying in %d seconds" % sleeptime
                     )

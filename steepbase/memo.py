@@ -1,14 +1,13 @@
 import hashlib
-import json
 import struct
-import sys
 from binascii import hexlify, unhexlify
 from collections import OrderedDict
 
-from steepbase.operations import Memo
 from Crypto.Cipher import AES
-from steepbase.base58 import base58encode, base58decode
+
 from steepbase.account import PrivateKey, PublicKey
+from steepbase.base58 import base58encode, base58decode
+from steepbase.operations import Memo
 
 default_prefix = "STM"
 
@@ -44,7 +43,7 @@ def init_aes(shared_secret, nonce):
         :rtype: length 2 tuple
 
     """
-    " Seed "
+    # Seed
     ss = unhexlify(shared_secret)
     n = struct.pack("<Q", int(nonce))
     encryption_key = hashlib.sha512(n + ss).hexdigest()
@@ -101,6 +100,7 @@ def encode_memo(priv, pub, nonce, message, **kwargs):
         ("shared_secret", shared_secret),
     ])
     tx = Memo(**s)
+
     return "#" + base58encode(hexlify(bytes(tx)).decode("ascii"))
 
 
@@ -151,7 +151,7 @@ def decode_memo(priv, message):
 
 
 def involved_keys(message):
-    " decode structure "
+    # decode structure
     raw = base58decode(message[1:])
     from_key = PublicKey(raw[:66])
     raw = raw[66:]

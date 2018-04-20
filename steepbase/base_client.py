@@ -53,8 +53,8 @@ class BaseClient(object):
         else:
             return body_dict
 
-    def exec(self, name, *args, api=None, return_with_args=None, _ret_cnt=0):
-        pass
+    def call(self, name, *args, api=None, return_with_args=None, _ret_cnt=0):
+        raise NotImplementedError('`call` method should be implemented')
 
     def _return(self, response=None, args=None, return_with_args=None):
         return_with_args = return_with_args or self.return_with_args
@@ -111,14 +111,13 @@ class BaseClient(object):
         else:
             return result
 
-    def exec_multi_with_futures(self, name, params, api=None, max_workers=None):
+    def call_multi_with_futures(self, name, params, api=None, max_workers=None):
         with concurrent.futures.ThreadPoolExecutor(
                 max_workers=max_workers) as executor:
             # Start the load operations and mark each future with its URL
             def ensure_list(parameter):
                 return parameter if type(parameter) in (list, tuple, set) else [parameter]
 
-            futures = (executor.submit(self.exec, name, *ensure_list(param), api=api)
-                       for param in params)
+            futures = (executor.submit(self.call, name, *ensure_list(param), api=api) for param in params)
             for future in concurrent.futures.as_completed(futures):
                 yield future.result()

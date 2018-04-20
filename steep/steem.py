@@ -1,4 +1,5 @@
 from steep.commit import Commit
+from steep.consts import API_LIST
 from steep.steemd import Steemd
 from steepbase.exceptions import RPCError
 
@@ -65,7 +66,7 @@ class Steem:
             return getattr(self.steemd, item)
         if hasattr(self.commit, item):
             return getattr(self.commit, item)
-        if item.endswith("_api"):
+        if item in API_LIST:
             return Steem.Api(api_name=item, exec_method=self.steemd.call)
 
         raise AttributeError('Steem has no attribute "%s"' % item)
@@ -93,8 +94,7 @@ class Steem:
         def __call__(self, *args, **kwargs):
             if len(kwargs) > 0:
                 if len(args) > 0:
-                    raise RPCError(
-                        "Cannot specify both args and kwargs in RPC")
+                    raise RPCError("Cannot specify both args and kwargs in RPC")
                 return self.exec_method(
                     self.method_name, kwargs=kwargs, api=self.api_name)
             return self.exec_method(self.method_name, *args, api=self.api_name)

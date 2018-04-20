@@ -2,8 +2,6 @@ import hashlib
 import logging
 import struct
 import time
-import array
-import sys
 from binascii import hexlify, unhexlify
 from collections import OrderedDict
 from datetime import datetime
@@ -116,7 +114,8 @@ class SignedTransaction(GrapheneObject):
     def recover_public_key(self, digest, signature, i):
         """ Recover the public key from the the signature
         """
-        # See http: //www.secg.org/download/aid-780/sec1-v2.pdf section 4.1.6 primarily
+        # See http: //www.secg.org/download/aid-780/sec1-v2.pdf
+        # section 4.1.6 primarily
         curve = ecdsa.SECP256k1.curve
         G = ecdsa.SECP256k1.generator
         order = ecdsa.SECP256k1.order
@@ -124,8 +123,12 @@ class SignedTransaction(GrapheneObject):
         r, s = ecdsa.util.sigdecode_string(signature, order)
         # 1.1
         x = r + (i // 2) * order
-        # 1.3. This actually calculates for either effectively 02||X or 03||X depending on 'k' instead of always for 02||X as specified.
-        # This substitutes for the lack of reversing R later on. -R actually is defined to be just flipping the y-coordinate in the elliptic curve.
+        # 1.3. This actually calculates for either effectively
+        # 02||X or 03||X depending on 'k' instead of always
+        # for 02||X as specified.
+        # This substitutes for the lack of reversing R later on.
+        # -R actually is defined to be just flipping the y-coordinate
+        # in the elliptic curve.
         alpha = ((x * x * x) + (curve.a() * x) + curve.b()) % curve.p()
         beta = ecdsa.numbertheory.square_root_mod_prime(alpha, curve.p())
         y = beta if (beta - yp) % 2 == 0 else curve.p() - beta
@@ -134,10 +137,14 @@ class SignedTransaction(GrapheneObject):
         # 1.5 Compute e
         e = ecdsa.util.string_to_number(digest)
         # 1.6 Compute Q = r^-1(sR - eG)
-        Q = ecdsa.numbertheory.inverse_mod(r, order) * (s * R + (-e % order) * G)
-        # Not strictly necessary, but let's verify the message for paranoia's sake.
-        if not ecdsa.VerifyingKey.from_public_point(Q, curve=ecdsa.SECP256k1).verify_digest(signature, digest,
-                                                                                            sigdecode=ecdsa.util.sigdecode_string):
+        Q = ecdsa.numbertheory.inverse_mod(r, order) * (s * R +
+                                                        (-e % order) * G)
+        # Not strictly necessary, but let's verify the message for
+        # paranoia's sake.
+        if not ecdsa.VerifyingKey.from_public_point(
+                Q, curve=ecdsa.SECP256k1).verify_digest(signature,
+                                                        digest,
+                                                        sigdecode=ecdsa.util.sigdecode_string):
             return None
         return ecdsa.VerifyingKey.from_public_point(Q, curve=ecdsa.SECP256k1)
 
@@ -167,7 +174,7 @@ class SignedTransaction(GrapheneObject):
         self.data["signatures"] = []
 
         # Get message to sign
-        #   bytes(self) will give the wire formated data according to
+        #   bytes(self) will give the wire formatted data according to
         #   GrapheneObject and the data given in __init__()
         self.message = unhexlify(self.chainid) + bytes(self)
         self.digest = hashlib.sha256(self.message).digest()
@@ -188,7 +195,8 @@ class SignedTransaction(GrapheneObject):
             recoverParameter = (bytes(signature)[0]) - 4 - 27  # recover parameter only
 
             if USE_SECP256K1:
-                ALL_FLAGS = secp256k1.lib.SECP256K1_CONTEXT_VERIFY | secp256k1.lib.SECP256K1_CONTEXT_SIGN
+                ALL_FLAGS = secp256k1.lib.SECP256K1_CONTEXT_VERIFY | \
+                            secp256k1.lib.SECP256K1_CONTEXT_SIGN
                 # Placeholder
                 pub = secp256k1.PublicKey(flags=ALL_FLAGS)
                 # Recover raw signature
@@ -224,10 +232,10 @@ class SignedTransaction(GrapheneObject):
         return pubKeysFound
 
     def _is_canonical(self, sig):
-        return (not (sig[0] & 0x80) and
-                not (sig[0] == 0 and not (sig[1] & 0x80)) and
-                not (sig[32] & 0x80) and
-                not (sig[32] == 0 and not (sig[33] & 0x80)))
+        return (not (sig[0] & 0x80)
+                and not (sig[0] == 0 and not (sig[1] & 0x80))
+                and not (sig[32] & 0x80)
+                and not (sig[32] == 0 and not (sig[33] & 0x80)))
 
     def sign(self, wifkeys, chain=None):
         """ Sign the transaction with the provided private keys.
@@ -242,7 +250,10 @@ class SignedTransaction(GrapheneObject):
 
         # Get Unique private keys
         self.privkeys = []
-        [self.privkeys.append(item) for item in wifkeys if item not in self.privkeys]
+        [
+            self.privkeys.append(item) for item in wifkeys
+            if item not in self.privkeys
+        ]
 
         # Sign the message with every private key given!
         sigs = []
@@ -284,8 +295,7 @@ class SignedTransaction(GrapheneObject):
                         sk.privkey.secret_multiplier,
                         hashlib.sha256,
                         hashlib.sha256(
-                            self.digest +
-                            struct.pack("d", time.time())  # use the local time to randomize the signature
+                            self.digest + struct.pack("d", time.time())  # use the local time to randomize the signature
                         ).digest())
 
                     # Sign message

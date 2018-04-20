@@ -18,7 +18,8 @@ class Account(dict):
     """ This class allows to easily access Account data
 
         :param str account_name: Name of the account
-        :param Steemd steemd_instance: Steemd() instance to use when accessing a RPC
+        :param Steemd steemd_instance: Steemd() instance to use when
+            accessing a RPC
 
     """
 
@@ -129,7 +130,7 @@ class Account(dict):
             'following': self.steemd.get_following
         }[direction]
 
-        limit = limit or 10**6
+        limit = limit or 10 ** 6
         max_request_limit = 100
         left_number = limit
 
@@ -205,13 +206,16 @@ class Account(dict):
 
         filtered_items = []
         for item in items:
+            item_time = None
             if 'time' in item:
                 item_time = item['time']
             elif 'timestamp' in item:
                 item_time = item['timestamp']
-            timestamp = parse_time(item_time).timestamp()
-            if end_time > timestamp > start_time:
-                filtered_items.append(item)
+
+            if item_time:
+                timestamp = parse_time(item_time).timestamp()
+                if end_time > timestamp > start_time:
+                    filtered_items.append(item)
 
         return filtered_items
 
@@ -262,7 +266,8 @@ class Account(dict):
             stop (int): (Optional) stop iteration early at this index
             order: (1, -1): 1 for chronological, -1 for reverse order
             filter_by (str, list): filter out all but these operations
-            raw_output (bool): (Defaults to False). If True, return history in steemd format (unchanged).
+            raw_output (bool): (Defaults to False). If True, return history in
+                steemd format (unchanged).
         """
         history = self.steemd.get_account_history(self.name, index, limit)
         for item in history[::order]:

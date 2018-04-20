@@ -2,13 +2,11 @@ import logging
 import os
 
 from steep.account import Account
+from steep.consts import ACCOUNT_BY_KEY_API
 from steep.instance import shared_steemd_instance
 from steepbase import bip38
 from steepbase.account import PrivateKey
-from steepbase.exceptions import (
-    InvalidWifError,
-    WalletExists
-)
+from steepbase.exceptions import InvalidWifError, WalletExists
 
 log = logging.getLogger(__name__)
 
@@ -48,8 +46,8 @@ class Wallet:
     keyStorage = None
 
     # Manually provided keys
-    keys = {}  # struct with pubkey as key and wif as value
-    keyMap = {}  # type:wif pairs to force certain keys
+    keys = {}  # Structure with pubkey as key and wif as value
+    keyMap = {}  # Type: wif pairs to force certain keys
 
     def __init__(self, steemd_instance=None, **kwargs):
         from steepbase.storage import configStorage
@@ -181,11 +179,9 @@ class Wallet:
             while True:
                 pw = self.getPassword(confirm=False)
                 if not pw:
-                    print(
-                        "You cannot chosen an empty password! " +
-                        "If you want to automate the use of the libs, " +
-                        "please use the `UNLOCK` environmental variable!"
-                    )
+                    print("You cannot chosen an empty password! " +
+                          "If you want to automate the use of the libs, " +
+                          "please use the `UNLOCK` environmental variable!")
                     continue
                 else:
                     pwck = self.getPassword(
@@ -203,7 +199,10 @@ class Wallet:
     def addPrivateKey(self, wif):
         """ Add a private key to the wallet database
         """
-        # it could be either graphenebase or pistonbase so we can't check the type directly
+
+        # it could be either graphenebase or pistonbase so we can't check
+        # the type directly
+
         if isinstance(wif, PrivateKey) or isinstance(wif, PrivateKey):
             wif = str(wif)
         try:
@@ -325,7 +324,7 @@ class Wallet:
         # FIXME, this only returns the first associated key.
         # If the key is used by multiple accounts, this
         # will surely lead to undesired behavior
-        names = self.steemd.call('get_key_references', [pub], api="account_by_key_api")[0]
+        names = self.steemd.call('get_key_references', [pub], api=ACCOUNT_BY_KEY_API)[0]
         if not names:
             return None
         else:
