@@ -23,6 +23,7 @@ class Blockchain(object):
 
     def __init__(self, steemd_instance=None, mode="irreversible"):
         self.steem = steemd_instance or shared_steemd_instance()
+        self.config = self.steem.get_config()
 
         if mode == "irreversible":
             self.mode = 'last_irreversible_block_num'
@@ -35,9 +36,6 @@ class Blockchain(object):
         """ This call returns the *dynamic global properties*
         """
         return self.steem.get_dynamic_global_properties()
-
-    def config(self):
-        return self.steem.get_config()
 
     def get_current_block_num(self):
         """ This call returns the current block
@@ -74,7 +72,7 @@ class Blockchain(object):
 
         _ = kwargs  # we need this
         # Let's find out how often blocks are generated!
-        block_interval = self.config().get("STEEMIT_BLOCK_INTERVAL")
+        block_interval = self.config.get("STEEM_BLOCK_INTERVAL") or 3
 
         is_reversed = end_block and start_block > end_block
 
@@ -179,7 +177,7 @@ class Blockchain(object):
 
         def get_reliable_block_interval(_client):
             return reliable_query(_client, 'get_config',
-                                  DATABASE_API).get('STEEMIT_BLOCK_INTERVAL')
+                                  DATABASE_API).get('STEEM_BLOCK_INTERVAL') or 3
 
         def get_reliable_current_block(_client):
             return reliable_query(_client, 'get_dynamic_global_properties',
