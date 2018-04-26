@@ -69,11 +69,9 @@ class DataDir(object):
         """
         if not os.path.isdir(backupdir):
             os.mkdir(backupdir)
-        backup_file = os.path.join(
-            backupdir,
-            os.path.basename(self.storageDatabase) +
-            datetime.now().strftime("-" + timeformat)
-        )
+        backup_file = os.path.join(backupdir,
+                                   os.path.basename(self.storageDatabase) +
+                                   datetime.now().strftime("-" + timeformat))
         connection = sqlite3.connect(self.sqlDataBaseFile)
         cursor = connection.cursor()
         # Lock database before making a backup
@@ -118,8 +116,7 @@ class Key(DataDir):
         """ Check if the database table exists
         """
         query = ("SELECT name FROM sqlite_master " +
-                 "WHERE type='table' AND name=?",
-                 (self.__tablename__,))
+                 "WHERE type='table' AND name=?", (self.__tablename__,))
         connection = sqlite3.connect(self.sqlDataBaseFile)
         cursor = connection.cursor()
         cursor.execute(*query)

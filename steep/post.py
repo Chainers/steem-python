@@ -22,7 +22,7 @@ class Post(dict):
         abstraction layer for Comments in Steem
 
         Args:
-            post (str or dict): ``@author/permlink`` or raw ``comment`` as dictionary.
+            post (str or dict): ``author/permlink`` or raw ``comment`` as dictionary.
             steemd_instance (Steemd): Steemd node to connect to
 
     """

@@ -114,8 +114,8 @@ class TransactionBuilder(dict):
 
         try:
             signedtx = SignedTransaction(**self.json())
-        except:
-            raise ValueError("Invalid TransactionBuilder Format")
+        except Exception as e:
+            raise e
 
         if not any(self.wifs):
             raise MissingKeyError
@@ -136,7 +136,12 @@ class TransactionBuilder(dict):
             if not self.steemd.verify_authority(self.json()):
                 raise InsufficientAuthorityError
         except Exception as e:
-            raise e
+            # There is an issue with some appbase builds which makes
+            # `verify_authority` unusable. TODO: remove this case #212
+            if 'Bad Cast:Invalid cast from string_type to Array' in str(e):
+                log.error("Ignoring verify_authority failure. See #212.")
+            else:
+                raise e
 
         try:
             self.steemd.broadcast_transaction(self.json())

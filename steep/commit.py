@@ -130,13 +130,13 @@ class Commit(object):
         return tx.broadcast()
 
     def sign(self, unsigned_trx, wifs=[]):
-        """ Sign a provided transaction witht he provided key(s)
+        """ Sign a provided transaction with the provided key(s)
 
             :param dict unsigned_trx: The transaction to be signed and returned
             :param string wifs: One or many wif keys to use for signing
                 a transaction. If not present, the keys will be loaded
                 from the wallet as defined in "missing_signatures" key
-                of the transactizions.
+                of the transactions.
         """
         tx = TransactionBuilder(
             unsigned_trx,
@@ -1048,17 +1048,11 @@ class Commit(object):
         authority = account[permission]
         try:
             pubkey = PublicKey(foreign)
-            authority["key_auths"].append([
-                str(pubkey),
-                weight
-            ])
+            authority["key_auths"].append([str(pubkey), weight])
         except:
             try:
                 foreign_account = Account(foreign, steemd_instance=self.steemd)
-                authority["account_auths"].append([
-                    foreign_account["name"],
-                    weight
-                ])
+                authority["account_auths"].append([foreign_account["name"], weight])
             except:
                 raise ValueError(
                     "Unknown foreign account or unvalid public key")
@@ -1136,10 +1130,8 @@ class Commit(object):
         try:
             self._test_weights_treshold(authority)
         except:
-            log.critical(
-                "The account's threshold will be reduced by %d"
-                % removed_weight
-            )
+            log.critical("The account's threshold will be reduced by %d" %
+                         removed_weight)
             authority["weight_threshold"] -= removed_weight
             self._test_weights_treshold(authority)
 
@@ -1243,7 +1235,7 @@ class Commit(object):
     def resteem(self, identifier, account=None):
         """ Resteem a post
 
-            :param str identifier: post identifier (@<account>/<permlink>)
+            :param str identifier: post identifier (<account>/<permlink>)
             :param str account: (optional) the account to allow access
                 to (defaults to ``default_account``)
         """
