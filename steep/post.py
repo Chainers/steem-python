@@ -2,8 +2,9 @@ import json
 import logging
 import re
 from datetime import datetime
+from queue import Queue
 
-from funcy import walk_values, get_in, silent, flatten
+from funcy import walk_values, get_in, silent
 
 from steep.amount import Amount
 from steep.commit import Commit
@@ -152,22 +153,20 @@ class Post(dict):
         return map(silent(Post), replies)
 
     @staticmethod
-    def get_all_replies(root_post=None, comments=list(), all_comments=list()):
-        """ Recursively fetch all the child comments, and return them as a list.
+    def get_all_replies(root_post=None):
+        """ Fetch all the child comments, and return them as a list.
 
         Usage: all_comments = Post.get_all_replies(Post('foo/bar'))
         """
-        # see if our root post has any comments
-        if root_post:
-            return Post.get_all_replies(comments=list(root_post.get_replies()))
-        if not comments:
-            return all_comments
-
-        # recursively scrape children one depth layer at a time
-        children = list(flatten([list(x.get_replies()) for x in comments]))
-        if not children:
-            return all_comments or comments
-        return Post.get_all_replies(comments=children, all_comments=comments + children)
+        queue = Queue()
+        replies = []
+        [queue.put(reply) for reply in root_post.get_replies()]
+        while not queue.empty():
+            reply = queue.get()
+            if reply:
+                [queue.put(children) for children in reply.get_replies()]
+                replies.append(reply)
+        return replies
 
     @property
     def reward(self):
