@@ -103,7 +103,7 @@ class Steemd(Connector):
             :param str sort: Sort the list by "recent" or "payout"
             :param str category: Only show posts in this category
             :param str start: Show posts after this post. Takes an
-                              identifier of the form ``author/permlink``
+                              identifier of the form ``@author/permlink``
         """
         from steep.post import Post
 
@@ -736,7 +736,7 @@ class Steemd(Connector):
         ::
 
            {'authorperm':
-           'alwaysfelicia/time-line-of-best-time...',
+           '@alwaysfelicia/time-line-of-best-time...',
            'percent': 100, 'rshares': 709227399, 'time':
            '2016-08-07T16:06:24', 'weight': '3241351576115042'},
 

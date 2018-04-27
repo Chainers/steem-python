@@ -49,7 +49,7 @@ class Post(dict):
     @staticmethod
     def parse_identifier(uri):
         """ Extract canonical post id/url (i.e. strip any leading `@`). """
-        return uri.split('@')[-1]
+        return '@%s' % uri.split('@')[-1]
 
     def refresh(self):
         post_author, post_permlink = resolve_identifier(self.identifier)
@@ -156,7 +156,7 @@ class Post(dict):
     def get_all_replies(root_post=None):
         """ Fetch all the child comments, and return them as a list.
 
-        Usage: all_comments = Post.get_all_replies(Post('foo/bar'))
+        Usage: all_comments = Post.get_all_replies(Post('@foo/bar'))
         """
         queue = Queue()
         replies = []
