@@ -27,7 +27,7 @@ class BaseClient(object):
         return urlparse(self.url).hostname
 
     @staticmethod
-    def json_rpc_body(name, *args, api=None, as_json=True, _id=0):
+    def json_rpc_body(name, *args, **kwargs):
         """ Build request body for steemd RPC requests.
 
         Args:
@@ -43,17 +43,37 @@ class BaseClient(object):
             (dict,str): If `as_json` is set to `True`, we get json formatted as a string.
             Otherwise, a Python dictionary is returned.
         """
-        headers = {"jsonrpc": "2.0", "id": _id}
-        if api:
-            body_dict = {**headers, "method": "call", "params": [api, name, args]}
-        else:
-            body_dict = {**headers, "method": name, "params": args}
-        if as_json:
-            return json.dumps(body_dict, ensure_ascii=False).encode('utf8')
-        else:
-            return body_dict
+        # if kwargs is non-empty after this, it becomes the call params
+        as_json = kwargs.pop('as_json', True)
+        api = kwargs.pop('api', None)
+        _id = kwargs.pop('_id', 0)
 
-    def call(self, name, *args, api=None, return_with_args=None, _ret_cnt=0):
+        # `kwargs` for object-style param, `args` for list-style. pick one.
+        assert not (kwargs and args), 'fail - passed array AND object args'
+        params = kwargs if kwargs else args
+
+        if api:
+            body = {
+                'jsonrpc': '2.0',
+                'id': _id,
+                'method': 'call',
+                'params': [api, name, params]
+            }
+        else:
+            body = {
+                'jsonrpc': '2.0',
+                'id': _id,
+                'method': name,
+                'params': params
+            }
+
+        if as_json:
+            return json.dumps(body, ensure_ascii=False).encode('utf8')
+
+        else:
+            return body
+
+    def call(self, name, *args, **kwargs):
         raise NotImplementedError('`call` method should be implemented')
 
     def _return(self, response=None, args=None, return_with_args=None):

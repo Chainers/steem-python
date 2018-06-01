@@ -28,7 +28,7 @@ class Testcases(unittest.TestCase):
             "6PRNFFkZc2NZ6dJqFfhRoFNMR9Lnyj7dYGrzdgXXVMXcxoKTePPX1dWByq"
         ])
 
-    def test_deencrypt(self):
+    def test_decrypt(self):
         self.assertEqual([
             format(
                 decrypt("6PRN5mjUTtud6fUXbJXezfn6oABoSr6GSLjMbrGXRZxSUcxTh"

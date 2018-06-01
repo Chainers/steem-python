@@ -1,3 +1,4 @@
+import json
 import logging
 import socket
 import time
@@ -10,8 +11,9 @@ import urllib3
 from urllib3.connection import HTTPConnection
 from urllib3.exceptions import MaxRetryError, ReadTimeoutError, ProtocolError
 
-from steep.consts import NETWORK_BROADCAST_API
+from steep.consts import CONDENSER_API
 from steepbase.base_client import BaseClient
+from steepbase.exceptions import RPCError, RPCErrorRecoverable
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +47,9 @@ class HttpClient(BaseClient):
        )
 
     """
+
+    # set of endpoints which were detected to not support condenser_api
+    non_appbase_nodes = set()
 
     def __init__(self, nodes, **kwargs):
         super().__init__()
@@ -91,6 +96,36 @@ class HttpClient(BaseClient):
         log_level = kwargs.get('log_level', logging.INFO)
         logger.setLevel(log_level)
 
+    def _curr_node_downgraded(self):
+        return self.url in HttpClient.non_appbase_nodes
+
+    def _downgrade_curr_node(self):
+        HttpClient.non_appbase_nodes.add(self.url)
+
+    def _is_error_recoverable(self, error):
+        assert 'message' in error, "missing error msg key: {}".format(error)
+        assert 'code' in error, "missing error code key: {}".format(error)
+        message = error['message']
+        code = error['code']
+
+        # common steemd error
+        # {"code"=>-32003, "message"=>"Unable to acquire database lock"}
+        if message == 'Unable to acquire database lock':
+            return True
+
+        # rare steemd error
+        # {"code"=>-32000, "message"=>"Unknown exception", "data"=>"0 exception: unspecified\nUnknown Exception\n[...]"}
+        if message == 'Unknown exception':
+            return True
+
+        # generic jussi error
+        # {'code': -32603, 'message': 'Internal Error', 'data': {'error_id': 'c7a15140-f306-4727-acbd-b5e8f3717e9b',
+        #         'request': {'amzn_trace_id': 'Root=1-5ad4cb9f-9bc86fbca98d9a180850fb80', 'jussi_request_id': None}}}
+        if message == 'Internal Error' and code == -32603:
+            return True
+
+        return False
+
     def next_node(self):
         """ Switch to the next available node.
 
@@ -103,8 +138,8 @@ class HttpClient(BaseClient):
         self.url = node_url
         self.request = partial(self.http.urlopen, 'POST', self.url)
 
-    def call(self, name, *args, api=None, return_with_args=None, _ret_cnt=0):
-        """ Call a remote procedure in golosd.
+    def call(self, name, *args, **kwargs):
+        """ Call a remote procedure in steemd.
 
         Warnings:
             This command will auto-retry in case of node failure, as well as handle
@@ -112,50 +147,76 @@ class HttpClient(BaseClient):
             In latter case, the exception is **re-raised**.
         """
 
-        body = HttpClient.json_rpc_body(name, *args, api=api)
-        response = None
+        retry_exceptions = (
+            MaxRetryError,
+            ConnectionResetError,
+            ReadTimeoutError,
+            RemoteDisconnected,
+            ProtocolError,
+            RPCErrorRecoverable,
+            json.decoder.JSONDecodeError,
+        )
 
-        try:
-            response = self.request(body=body)
-        except (MaxRetryError,
-                ConnectionResetError,
-                ReadTimeoutError,
-                RemoteDisconnected,
-                ProtocolError) as e:
-            # if we broadcasted a transaction, always raise
-            # this is to prevent potential for double spend scenario
-            if api == NETWORK_BROADCAST_API:
-                raise e
+        tries = 0
+        while True:
+            try:
+                body_kwargs = kwargs.copy()
+                if not self._curr_node_downgraded():
+                    body_kwargs['api'] = CONDENSER_API
 
-            # try switching nodes before giving up
-            if _ret_cnt > 2:
-                # we should wait only a short period before trying
-                # the next node, but still slowly increase backoff
-                time.sleep(_ret_cnt)
-            elif _ret_cnt > 10:
-                raise e
-            self.next_node()
-            logging.debug('Switched node to %s due to exception: %s' %
-                          (self.hostname, e.__class__.__name__))
-            return self.call(name, *args,
-                             return_with_args=return_with_args,
-                             _ret_cnt=_ret_cnt + 1
-                             )
-        except Exception as e:
-            if self.re_raise:
-                raise e
-            else:
-                extra = dict(err=e, request=self.request)
-                logger.info('Request error', extra=extra)
-                return self._return(
-                    response=response,
-                    args=args,
-                    return_with_args=return_with_args)
-        else:
-            if response.status not in [*response.REDIRECT_STATUSES, 200]:
-                logger.info('non 200 response:%s', response.status)
+                body = HttpClient.json_rpc_body(name, *args, **body_kwargs)
+                response = self.request(body=body)
 
-            return self._return(
-                response=response,
-                args=args,
-                return_with_args=return_with_args)
+                success_codes = {*response.REDIRECT_STATUSES, 200}
+                if response.status not in success_codes:
+                    raise RPCErrorRecoverable('non-200 response: %s from %s' % (response.status, self.hostname))
+
+                result = json.loads(response.data.decode('utf-8'))
+                assert result, 'result entirely blank'
+
+                if 'error' in result:
+                    # legacy (pre-appbase) nodes always return err code 1
+                    legacy = result['error']['code'] == 1
+                    detail = result['error']['message']
+
+                    # some errors have no data key (db lock error)
+                    if 'data' not in result['error']:
+                        error = 'error'
+                    # some errors have no name key (jussi errors)
+                    elif 'name' not in result['error']['data']:
+                        error = 'unspecified error'
+                    else:
+                        error = result['error']['data']['name']
+
+                    if legacy:
+                        detail = ":".join(detail.split("\n")[0:2])
+                        if not self._curr_node_downgraded():
+                            self._downgrade_curr_node()
+                            logging.error('Downgrade-retry %s', self.hostname)
+                            continue
+
+                    detail = ('%s from %s (%s) in %s' % (
+                        error, self.hostname, detail, name))
+
+                    if self._is_error_recoverable(result['error']):
+                        raise RPCErrorRecoverable(detail)
+                    else:
+                        raise RPCError(detail)
+
+                return result['result']
+
+            except retry_exceptions as e:
+                if tries >= 10:
+                    logger.error('Failed to call Steem API after %d atempts - %s: %s', tries, e.__class__.__name__, e)
+                tries += 1
+                logger.warning('Retry in %ds - %s: %s', tries, e.__class__.__name__, e)
+                time.sleep(tries)
+                self.next_node()
+                continue
+
+            except Exception as e:
+                logger.error('Unexpected exception - %s: %s', e.__class__.__name__, e, extra={
+                    'err': e,
+                    'request': self.request
+                })
+                raise e

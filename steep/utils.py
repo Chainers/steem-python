@@ -181,7 +181,7 @@ def is_comment(item):
     """Quick check whether an item is a comment (reply) to another post.
     The item can be a Post object or just a raw comment object from the blockchain.
     """
-    return item['permlink'][:3] == "re-" and item['parent_author']
+    return item['parent_author'] != ""
 
 
 def time_elapsed(posting_time):
@@ -318,7 +318,7 @@ def fmt_time_from_now(secs=0):
 
 
 def env_unlocked():
-    """ Check if wallet password is provided as ENV variable. """
+    """ Check if wallet passphrase is provided as ENV variable. """
     return os.getenv('UNLOCK', False)
 
 

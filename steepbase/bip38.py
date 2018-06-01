@@ -1,5 +1,6 @@
 import hashlib
 import logging
+import os
 from binascii import hexlify, unhexlify
 
 from steepbase.account import PrivateKey
@@ -12,7 +13,7 @@ try:
 except ImportError:
     raise ImportError("Missing dependency: pycrypto")
 
-SCRYPT_MODULE = None
+SCRYPT_MODULE = os.environ.get('SCRYPT_MODULE', None)
 if not SCRYPT_MODULE:
     try:
         import scrypt
@@ -25,6 +26,16 @@ if not SCRYPT_MODULE:
             SCRYPT_MODULE = "pylibscrypt"
         except ImportError:
             raise ImportError('Missing dependency: scrypt or pylibscrypt')
+elif 'pylibscrypt' in SCRYPT_MODULE:
+    try:
+        import pylibscrypt as scrypt
+    except ImportError:
+        raise ImportError("Missing dependency: pylibscrypt explicitly set but missing")
+elif 'scrypt' in SCRYPT_MODULE:
+    try:
+        import scrypt
+    except ImportError:
+            raise ImportError("Missing dependency: scrypt explicitly set but missing")
 
 log.debug("Using scrypt module: %s" % SCRYPT_MODULE)
 
@@ -68,8 +79,8 @@ def encrypt(privkey, passphrase):
                salt + encrypted_half1 + encrypted_half2)
     " Checksum "
     checksum = hashlib.sha256(hashlib.sha256(payload).digest()).digest()[:4]
-    privatkey = hexlify(payload + checksum).decode('ascii')
-    return Base58(privatkey)
+    privatekey = hexlify(payload + checksum).decode('ascii')
+    return Base58(privatekey)
 
 
 def decrypt(encrypted_privkey, passphrase):

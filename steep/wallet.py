@@ -69,8 +69,8 @@ class Wallet:
             """ If no keys are provided manually we load the SQLite
                 keyStorage
             """
-            from steepbase.storage import (keyStorage, MasterPassword)
-            self.MasterPassword = MasterPassword
+            from steepbase.storage import (keyStorage, KeyEncryptionKey)
+            self.MasterPassword = KeyEncryptionKey
             self.keyStorage = keyStorage
 
     def setKeys(self, loadkeys):
@@ -91,7 +91,7 @@ class Wallet:
                 raise InvalidWifError
             Wallet.keys[format(key.pubkey, self.prefix)] = str(key)
 
-    def unlock(self, pwd=None):
+    def unlock(self, user_passphrase=None):
         """ Unlock the wallet database
         """
         if not self.created():
@@ -99,10 +99,10 @@ class Wallet:
 
         if (self.masterpassword is None
                 and self.configStorage[self.MasterPassword.config_key]):
-            if pwd is None:
-                pwd = self.getPassword()
-            masterpwd = self.MasterPassword(pwd)
-            self.masterpassword = masterpwd.decrypted_master
+            if user_passphrase is None:
+                user_passphrase = self.getUserPassphrase()
+            kek = self.MasterPassword(user_passphrase)
+            self.masterpassword = kek.decrypted_KEK
 
     def lock(self):
         """ Lock the wallet database
@@ -114,18 +114,18 @@ class Wallet:
         """
         return False if self.masterpassword else True
 
-    def changePassphrase(self):
-        """ Change the passphrase for the wallet database
+    def changeUserPassphrase(self):
+        """ Change the user entered password for the wallet database
         """
         # Open Existing Wallet
-        pwd = self.getPassword()
-        masterpwd = self.MasterPassword(pwd)
-        self.masterpassword = masterpwd.decrypted_master
+        pwd = self.getUserPassphrase()
+        kek = self.MasterPassword(pwd)
+        self.masterpassword = kek.decrypted_KEK
         # Provide new passphrase
-        print("Please provide the new password")
-        newpwd = self.getPassword(confirm=True)
+        print("Please provide the new passphrase")
+        newpwd = self.getUserPassphrase(confirm=True)
         # Change passphrase
-        masterpwd.changePassword(newpwd)
+        kek.changePassphrase(newpwd)
 
     def created(self):
         """ Do we have a wallet database already?
@@ -134,7 +134,7 @@ class Wallet:
             # Already keys installed
             return True
         elif self.MasterPassword.config_key in self.configStorage:
-            # no keys but a master password
+            # no keys but a KeyEncryptionKey
             return True
         else:
             return False
@@ -144,10 +144,10 @@ class Wallet:
         """
         if self.created():
             raise WalletExists("You already have created a wallet!")
-        print("Please provide a password for the new wallet")
-        pwd = self.getPassword(confirm=True)
-        masterpwd = self.MasterPassword(pwd)
-        self.masterpassword = masterpwd.decrypted_master
+        print("Please provide a passphrase for the new wallet")
+        pwd = self.getUserPassphrase(confirm=True)
+        kek = self.MasterPassword(pwd)
+        self.masterpassword = kek.decrypted_KEK
 
     def encrypt_wif(self, wif):
         """ Encrypt a wif key
@@ -167,24 +167,24 @@ class Wallet:
         self.unlock()
         return format(bip38.decrypt(encwif, self.masterpassword), "wif")
 
-    def getPassword(self, confirm=False, text='Passphrase: '):
-        """ Obtain a password from the user
+    def getUserPassphrase(self, confirm=False, text='Passphrase: '):
+        """ Obtain a passphrase from the user
         """
         import getpass
         if "UNLOCK" in os.environ:
-            # overwrite password from environmental variable
+            # overwrite passphrase from environmental variable
             return os.environ.get("UNLOCK")
         if confirm:
             # Loop until both match
             while True:
-                pw = self.getPassword(confirm=False)
+                pw = self.getUserPassphrase(confirm=False)
                 if not pw:
-                    print("You cannot chosen an empty password! " +
-                          "If you want to automate the use of the libs, " +
+                    print("You cannot choose an empty password! " +
+                          "If you want to automate the use of the library, " +
                           "please use the `UNLOCK` environmental variable!")
                     continue
                 else:
-                    pwck = self.getPassword(
+                    pwck = self.getUserPassphrase(
                         confirm=False,
                         text="Confirm Passphrase: "
                     )
