@@ -42,7 +42,8 @@ REQUIRED = [
     'ujson',
     'urllib3',
     'voluptuous',
-    'w3lib'
+    'w3lib',
+    'websocket-client'
 ]
 
 TEST_REQUIRED = [
