@@ -100,8 +100,8 @@ class Post(dict):
             if post["depth"] == 0:
                 tags = [post["parent_permlink"]]
                 tags += get_in(post, ['json_metadata', 'tags'], default=[])
-                tags_set = set(tags)
-                post["tags"] = [tag for tag in tags if tag not in tags_set]
+                tags_added = set()
+                post['tags'] = [tag for tag in tags if not (tag in tags_added or tags_added.add(tag))]
 
             post['community'] = get_in(post, ['json_metadata', 'community'], default='')
 
