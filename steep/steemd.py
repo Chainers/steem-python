@@ -873,7 +873,7 @@ class Steemd(Connector):
 
     def get_reblogged_by(self, author: str, permlink: str):
         """ get_reblogged_by """
-        return self.call('get_reblogged_by', author, permlink, api=FOLLOW_API)
+        return self.call('follow_api.get_reblogged_by', author, permlink, set_default_api=False)
 
     def get_blog_authors(self, blog_account: str):
         """ get_blog_authors """

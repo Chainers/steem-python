@@ -160,8 +160,14 @@ class HttpClient(BaseClient):
         tries = 0
         while True:
             try:
+                set_default_api = True
+                if 'set_default_api' in kwargs:
+                    set_default_api = kwargs['set_default_api']
+                    kwargs.pop('set_default_api')
+
                 body_kwargs = kwargs.copy()
-                if not self._curr_node_downgraded():
+
+                if set_default_api and not self._curr_node_downgraded():
                     body_kwargs['api'] = CONDENSER_API
 
                 body = HttpClient.json_rpc_body(name, *args, **body_kwargs)
