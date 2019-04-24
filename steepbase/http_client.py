@@ -1,25 +1,27 @@
+import asyncio
 import json
 import logging
-import socket
-import time
-from functools import partial
-from http.client import RemoteDisconnected
-from itertools import cycle
+from asyncio import FIRST_COMPLETED
+from typing import Iterable, Union
+from urllib.parse import urlparse
 
-import certifi
-import urllib3
-from urllib3.connection import HTTPConnection
-from urllib3.exceptions import MaxRetryError, ReadTimeoutError, ProtocolError
+import aiohttp
+from aiohttp import ClientSession
 
 from steep.consts import CONDENSER_API
 from steepbase.base_client import BaseClient
-from steepbase.exceptions import RPCError, RPCErrorRecoverable
+from steepbase.exceptions import RPCError, RPCErrorRecoverable, NumRetriesReached
 
 logger = logging.getLogger(__name__)
 
 
+def get_hostname(url: str) -> str:
+    """Getting hostname from url."""
+    return urlparse(url).hostname
+
+
 class HttpClient(BaseClient):
-    """ Simple Steem JSON-HTTP-RPC API
+    """ Async HTTP client for steep-steem.
 
     This class serves as an abstraction layer for easy use of the Steem API.
 
@@ -50,59 +52,42 @@ class HttpClient(BaseClient):
 
     # set of endpoints which were detected to not support condenser_api
     non_appbase_nodes = set()
+    success_response_codes = {200, 301, 302, 303, 307, 308}
 
-    def __init__(self, nodes, **kwargs):
+    retry_exceptions = (
+        aiohttp.ServerConnectionError,
+        aiohttp.ServerTimeoutError,
+        aiohttp.ServerDisconnectedError,
+        json.decoder.JSONDecodeError,
+        RPCErrorRecoverable,
+    )
+
+    def __init__(self, nodes: Iterable[str], **kwargs):
         super().__init__()
 
-        self.return_with_args = kwargs.get('return_with_args', False)
-        self.re_raise = kwargs.get('re_raise', True)
-        self.max_workers = kwargs.get('max_workers', None)
+        # self.return_with_args = kwargs.get('return_with_args', False)
+        # self.re_raise = kwargs.get('re_raise', True)
+        # self.max_workers = kwargs.get('max_workers', None)
+        #
+        # num_pools = kwargs.get('num_pools', 10)
+        # maxsize = kwargs.get('maxsize', 10)
+        # timeout = kwargs.get('timeout', 60)
+        # retries = kwargs.get('retries', 20)
+        # pool_block = kwargs.get('pool_block', False)
+        # tcp_keepalive = kwargs.get('tcp_keepalive', True)
 
-        num_pools = kwargs.get('num_pools', 10)
-        maxsize = kwargs.get('maxsize', 10)
-        timeout = kwargs.get('timeout', 60)
-        retries = kwargs.get('retries', 20)
-        pool_block = kwargs.get('pool_block', False)
-        tcp_keepalive = kwargs.get('tcp_keepalive', True)
-
-        if tcp_keepalive:
-            socket_options = HTTPConnection.default_socket_options + \
-                             [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1), ]
-        else:
-            socket_options = HTTPConnection.default_socket_options
-
-        self.http = urllib3.poolmanager.PoolManager(
-            num_pools=num_pools,
-            maxsize=maxsize,
-            block=pool_block,
-            timeout=timeout,
-            retries=retries,
-            socket_options=socket_options,
-            headers={'Content-Type': 'application/json'},
-            cert_reqs='CERT_REQUIRED',
-            ca_certs=certifi.where())
-        '''
-            urlopen(method, url, body=None, headers=None, retries=None,
-            redirect=True, assert_same_host=True, timeout=<object object>,
-            pool_timeout=None, release_conn=None, chunked=False, body_pos=None,
-            **response_kw)
-        '''
-
-        self.nodes = cycle(nodes)
-        self.url = ''
-        self.request = None
-        self.next_node()
+        self.nodes = list(nodes)
 
         log_level = kwargs.get('log_level', logging.INFO)
         logger.setLevel(log_level)
 
-    def _curr_node_downgraded(self):
-        return self.url in HttpClient.non_appbase_nodes
+    def _is_node_downgraded(self, node_url: str) -> bool:
+        return node_url in self.__class__.non_appbase_nodes
 
-    def _downgrade_curr_node(self):
-        HttpClient.non_appbase_nodes.add(self.url)
+    def _downgrade_node(self, node_url: str):
+        self.__class__.non_appbase_nodes.add(node_url)
 
-    def _is_error_recoverable(self, error):
+    def _is_error_recoverable(self, error: dict) -> bool:
         assert 'message' in error, "missing error msg key: {}".format(error)
         assert 'code' in error, "missing error code key: {}".format(error)
         message = error['message']
@@ -126,103 +111,101 @@ class HttpClient(BaseClient):
 
         return False
 
-    def next_node(self):
-        """ Switch to the next available node.
+    def _build_bodies_for_nodes(self, name, *args, **kwargs) -> dict:
+        set_default_api = True
+        if 'set_default_api' in kwargs:
+            set_default_api = kwargs['set_default_api']
+            kwargs.pop('set_default_api')
 
-        This method will change base URL of our requests.
-        Use it when the current node goes down to change to a fallback node. """
-        self.set_node(next(self.nodes))
+        kwargs_for_downgraded = kwargs.copy()
+        kwargs['api'] = CONDENSER_API
 
-    def set_node(self, node_url):
-        """ Change current node to provided node URL. """
-        self.url = node_url
-        self.request = partial(self.http.urlopen, 'POST', self.url)
+        bodies = dict()
+        for node in self.nodes:
+            if set_default_api and not self._is_node_downgraded(node):
+                body_kwargs = kwargs
+            else:
+                body_kwargs = kwargs_for_downgraded
 
-    def call(self, name, *args, **kwargs):
-        """ Call a remote procedure in steemd.
+            bodies[node] = self.__class__.json_rpc_body(name, *args, **body_kwargs)
 
-        Warnings:
-            This command will auto-retry in case of node failure, as well as handle
-            node fail-over, unless we are broadcasting a transaction.
-            In latter case, the exception is **re-raised**.
-        """
+        return bodies
 
-        retry_exceptions = (
-            MaxRetryError,
-            ConnectionResetError,
-            ReadTimeoutError,
-            RemoteDisconnected,
-            ProtocolError,
-            RPCErrorRecoverable,
-            json.decoder.JSONDecodeError,
-        )
+    async def _request(self, node_url: str, data: Union[str, dict], session: ClientSession):
+        try:
+            async with session.post(node_url, data=data) as response:
+                node_hostname = get_hostname(node_url)
 
-        tries = 0
-        while True:
-            try:
-                set_default_api = True
-                if 'set_default_api' in kwargs:
-                    set_default_api = kwargs['set_default_api']
-                    kwargs.pop('set_default_api')
+                if response.status not in self.success_response_codes:
+                    message = '{status} status from {host}'.format(status=response.status, host=node_hostname)
+                    logger.warning(message)
+                    raise RPCErrorRecoverable(message)
 
-                body_kwargs = kwargs.copy()
+                response_data = await response.json(encoding='utf-8')
+                assert response_data, 'result entirely blank'
 
-                if set_default_api and not self._curr_node_downgraded():
-                    body_kwargs['api'] = CONDENSER_API
-
-                body = HttpClient.json_rpc_body(name, *args, **body_kwargs)
-                response = self.request(body=body)
-
-                success_codes = {*response.REDIRECT_STATUSES, 200}
-                if response.status not in success_codes:
-                    raise RPCErrorRecoverable('non-200 response: %s from %s' % (response.status, self.hostname))
-
-                result = json.loads(response.data.decode('utf-8'))
-                assert result, 'result entirely blank'
-
-                if 'error' in result:
+                if 'error' in response_data:
                     # legacy (pre-appbase) nodes always return err code 1
-                    legacy = result['error']['code'] == 1
-                    detail = result['error']['message']
+                    legacy = response_data['error']['code'] == 1
+                    detail = response_data['error']['message']
 
                     # some errors have no data key (db lock error)
-                    if 'data' not in result['error']:
+                    if 'data' not in response_data['error']:
                         error = 'error'
                     # some errors have no name key (jussi errors)
-                    elif 'name' not in result['error']['data']:
+                    elif 'name' not in response_data['error']['data']:
                         error = 'unspecified error'
                     else:
-                        error = result['error']['data']['name']
+                        error = response_data['error']['data']['name']
 
                     if legacy:
                         detail = ":".join(detail.split("\n")[0:2])
-                        if not self._curr_node_downgraded():
-                            self._downgrade_curr_node()
-                            logging.error('Downgrade-retry %s', self.hostname)
-                            continue
+                        if not self._is_node_downgraded(node_url):
+                            self._downgrade_node(node_url)
+                            logger.error('Downgrade-retry %s', node_hostname)
 
-                    detail = ('%s from %s (%s) in %s' % (
-                        error, self.hostname, detail, name))
+                    detail = '{} from {} ({})'.format(error, node_hostname, detail)
 
-                    if self._is_error_recoverable(result['error']):
+                    if self._is_error_recoverable(response_data['error']):
                         raise RPCErrorRecoverable(detail)
                     else:
                         raise RPCError(detail)
 
-                return result['result']
+                return response_data['result']
+        except self.retry_exceptions as e:
+            logger.warning('Retry exception - {}: {}'.format(e.__class__.__name__, e))
+            await asyncio.sleep(5)
+            return await self._request(node_url, data, session)
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.error(
+                'Unexpected exception - {}: {}'.format(e.__class__.__name__, e),
+                extra={'err': e}
+            )
 
-            except retry_exceptions as e:
-                if tries >= 10:
-                    logger.error('Failed to call Steem API after %d atempts - %s: %s', tries, e.__class__.__name__, e)
-                tries += 1
-                logger.warning('Retry in %ds - %s: %s', tries, e.__class__.__name__, e)
-                time.sleep(tries)
-                self.next_node()
-                continue
+            await asyncio.sleep(60)
 
-            except Exception as e:
-                logger.error('Unexpected exception - %s: %s', e.__class__.__name__, e, extra={
-                    'err': e,
-                    'request': self.request
-                })
-                raise e
+    async def _call(self, name, *args, **kwargs):
+        bodies = self._build_bodies_for_nodes(name, *args, **kwargs)
+
+        async with ClientSession(conn_timeout=5, read_timeout=10) as session:
+            tasks = [
+                asyncio.ensure_future(self._request(node_url, body, session)) for node_url, body in bodies.items()
+            ]
+
+            done, pending = await asyncio.wait(tasks, return_when=FIRST_COMPLETED, timeout=20)
+
+            for task in pending:
+                task.cancel()
+
+            if done:
+                return done.pop().result()
+            else:
+                raise NumRetriesReached
+
+    def call(self, name, *args, **kwargs):
+        loop = asyncio.get_event_loop()
+        future = asyncio.ensure_future(self._call(name, *args, **kwargs))
+        loop.run_until_complete(future)
+        return future.result()
