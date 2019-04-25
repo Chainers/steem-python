@@ -77,9 +77,15 @@ class HttpClient(BaseClient):
         # tcp_keepalive = kwargs.get('tcp_keepalive', True)
 
         self.nodes = list(nodes)
+        self.session = ClientSession(conn_timeout=5, read_timeout=15)
+        self.loop = asyncio.get_event_loop()
 
         log_level = kwargs.get('log_level', logging.INFO)
         logger.setLevel(log_level)
+
+    def __del__(self):
+        self.loop.run_until_complete(self.session.close())
+        self.loop.close()
 
     def _is_node_downgraded(self, node_url: str) -> bool:
         return node_url in self.__class__.non_appbase_nodes
@@ -131,9 +137,9 @@ class HttpClient(BaseClient):
 
         return bodies
 
-    async def _request(self, node_url: str, data: Union[str, dict], session: ClientSession):
+    async def _request(self, node_url: str, data: Union[str, dict]):
         try:
-            async with session.post(node_url, data=data) as response:
+            async with self.session.post(node_url, data=data) as response:
                 node_hostname = get_hostname(node_url)
 
                 if response.status not in self.success_response_codes:
@@ -175,7 +181,7 @@ class HttpClient(BaseClient):
         except self.retry_exceptions as e:
             logger.warning('Retry exception - {}: {}'.format(e.__class__.__name__, e))
             await asyncio.sleep(5)
-            return await self._request(node_url, data, session)
+            return await self._request(node_url, data)
         except asyncio.CancelledError:
             pass
         except Exception as e:
@@ -189,23 +195,21 @@ class HttpClient(BaseClient):
     async def _call(self, name, *args, **kwargs):
         bodies = self._build_bodies_for_nodes(name, *args, **kwargs)
 
-        async with ClientSession(conn_timeout=5, read_timeout=10) as session:
-            tasks = [
-                asyncio.ensure_future(self._request(node_url, body, session)) for node_url, body in bodies.items()
-            ]
+        tasks = [
+            asyncio.ensure_future(self._request(node_url, body)) for node_url, body in bodies.items()
+        ]
 
-            done, pending = await asyncio.wait(tasks, return_when=FIRST_COMPLETED, timeout=20)
+        done, pending = await asyncio.wait(tasks, return_when=FIRST_COMPLETED, timeout=20)
 
-            for task in pending:
-                task.cancel()
+        for task in pending:
+            task.cancel()
 
-            if done:
-                return done.pop().result()
-            else:
-                raise NumRetriesReached
+        if done:
+            return done.pop().result()
+        else:
+            raise NumRetriesReached
 
     def call(self, name, *args, **kwargs):
-        loop = asyncio.get_event_loop()
         future = asyncio.ensure_future(self._call(name, *args, **kwargs))
-        loop.run_until_complete(future)
+        self.loop.run_until_complete(future)
         return future.result()
