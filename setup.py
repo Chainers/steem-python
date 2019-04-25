@@ -28,6 +28,7 @@ def license_file():
 
 REQUIRED = [
     'appdirs',
+    'aiohttp',
     'certifi',
     'ecdsa>=0.13',
     'funcy',
