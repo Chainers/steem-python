@@ -79,7 +79,9 @@ class Steemd(Connector):
             post = state["content"][reply]
             if skip_own and post["author"] == author:
                 continue
+
             discussions.append(Post(post, steemd_instance=self))
+
         return discussions
 
     def get_promoted(self):
@@ -94,6 +96,7 @@ class Steemd(Connector):
         for p in promoted:
             post = state["content"].get(p)
             r.append(Post(post, steemd_instance=self))
+
         return r
 
     def get_posts(self, limit=10, sort="hot", category=None, start=None):
@@ -111,6 +114,7 @@ class Steemd(Connector):
             "tag": category,
             "limit": limit,
         }
+
         if start:
             author, permlink = resolve_identifier(start)
             discussion_query["start_author"] = author
@@ -126,6 +130,7 @@ class Steemd(Connector):
         r = []
         for p in func(discussion_query):
             r.append(Post(p, steemd_instance=self))
+
         return r
 
     def stream_comments(self, *args, **kwargs):
@@ -261,7 +266,8 @@ class Steemd(Connector):
             account,
             start,
             limit,
-            api=DATABASE_API)
+            api=DATABASE_API
+        )
 
     def get_trending_tags(self, after_tag, limit):
         """ get_trending_tags """
@@ -284,7 +290,8 @@ class Steemd(Connector):
         return self.call(
             'get_post_discussions_by_payout',
             discussion_query,
-            api=DATABASE_API)
+            api=DATABASE_API
+        )
 
     def get_discussions_by_created(self, discussion_query):
         """ get_discussions_by_created """
@@ -312,7 +319,8 @@ class Steemd(Connector):
         return self.call(
             'get_discussions_by_children',
             discussion_query,
-            api=DATABASE_API)
+            api=DATABASE_API
+        )
 
     def get_discussions_by_hot(self, discussion_query):
         """ get_discussions_by_hot """
@@ -334,14 +342,16 @@ class Steemd(Connector):
         return self.call(
             'get_discussions_by_comments',
             discussion_query,
-            api=DATABASE_API)
+            api=DATABASE_API
+        )
 
     def get_discussions_by_promoted(self, discussion_query):
         """ get_discussions_by_promoted """
         return self.call(
             'get_discussions_by_promoted',
             discussion_query,
-            api=DATABASE_API)
+            api=DATABASE_API
+        )
 
     def get_block_header(self, block_num):
         """ Get block headers, given a block number.
@@ -384,8 +394,7 @@ class Steemd(Connector):
 
     def get_ops_in_block(self, block_num, virtual_only):
         """ get_ops_in_block """
-        return self.call(
-            'get_ops_in_block', block_num, virtual_only, api=DATABASE_API)
+        return self.call('get_ops_in_block', block_num, virtual_only, api=DATABASE_API)
 
     def get_state(self, path):
         """ get_state """
@@ -679,7 +688,8 @@ class Steemd(Connector):
             'get_required_signatures',
             signed_transaction,
             available_keys,
-            api=DATABASE_API)
+            api=DATABASE_API
+        )
 
     def get_potential_signatures(self, signed_transaction: SignedTransaction):
         """ get_potential_signatures """
@@ -771,7 +781,8 @@ class Steemd(Connector):
             start_permlink,
             before_date,
             limit,
-            api=DATABASE_API)
+            api=DATABASE_API
+        )
 
     def get_replies_by_last_update(self, account: str, start_permlink: str, limit: int):
         """ get_replies_by_last_update """
@@ -780,7 +791,8 @@ class Steemd(Connector):
             account,
             start_permlink,
             limit,
-            api=DATABASE_API)
+            api=DATABASE_API
+        )
 
     def get_witnesses(self, witness_ids: list):
         """ get_witnesses """
@@ -813,7 +825,8 @@ class Steemd(Connector):
             account,
             from_account,
             limit,
-            api=DATABASE_API)
+            api=DATABASE_API
+        )
 
     def login(self, username: str, password: str):
         """ login """
@@ -835,7 +848,8 @@ class Steemd(Connector):
             start_follower,
             follow_type,
             limit,
-            api=FOLLOW_API)
+            api=FOLLOW_API
+        )
 
     def get_following(self, account: str, start_follower: str, follow_type: str, limit: int):
         """ get_following """
@@ -845,7 +859,8 @@ class Steemd(Connector):
             start_follower,
             follow_type,
             limit,
-            api=FOLLOW_API)
+            api=FOLLOW_API
+        )
 
     def get_follow_count(self, account: str):
         """ get_follow_count """
@@ -884,7 +899,8 @@ class Steemd(Connector):
         return self.call(
             'broadcast_transaction',
             signed_transaction,
-            api=NETWORK_BROADCAST_API)
+            api=NETWORK_BROADCAST_API
+        )
 
     def broadcast_transaction_synchronous(self, signed_transaction: SignedTransaction):
         """ broadcast_transaction_synchronous """
@@ -932,6 +948,7 @@ class Steemd(Connector):
         """ get_key_references """
         if type(public_keys) == str:
             public_keys = [public_keys]
+
         return self.call('get_key_references', public_keys, api=ACCOUNT_BY_KEY_API)
 
 
