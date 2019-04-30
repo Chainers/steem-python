@@ -11,7 +11,7 @@ assert sys.version_info[0] == 3 and sys.version_info[1] >= 5, "steep-steem requi
 
 # Package meta-data.
 NAME = 'steep-steem'
-VERSION = '0.1.2.2'
+VERSION = '0.1.2.3'
 DESCRIPTION = 'Fork of official python STEEM library.'
 URL = 'https://github.com/Chainers/steep-steem'
 EMAIL = 'steepshot.org@gmail.com'
