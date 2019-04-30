@@ -1,11 +1,7 @@
-import logging
 from datetime import timedelta, datetime
 from itertools import cycle
 from typing import List, Iterator, Generator
 from urllib.parse import urlparse
-
-
-logger = logging.getLogger(__name__)
 
 
 class Node:
@@ -14,8 +10,8 @@ class Node:
     def __init__(
         self,
         url: str,
-        ban_timeout: timedelta = timedelta(minutes=2),
-        unavailable_timeout: timedelta = timedelta(minutes=30),
+        ban_timeout: int = 2,  # in minutes
+        unavailable_timeout: int = 20,  # in minutes
     ):
         """Providing interface for working with node."""
         self._url = url
@@ -24,11 +20,12 @@ class Node:
         self._banned = False
         self._use_condenser_api = True
 
-        self._ban_timeout = ban_timeout
-        self._ban_timestamp = None
+        self._ban_timestamp = None  # when node was banned
+        self._unavailable_timestamp = None  # when we marked node as unavailable
 
-        self._unavailable_timeout = unavailable_timeout
-        self._unavailable_timestamp = None
+        self._ban_timeout = timedelta(minutes=ban_timeout)
+        self._unavailable_timeout = timedelta(minutes=unavailable_timeout)
+
 
     @property
     def url(self) -> str:
@@ -59,6 +56,11 @@ class Node:
         return self._banned
 
     @property
+    def is_working(self) -> bool:
+        """Returns true if node is available and not banned."""
+        return self.is_available and not self.is_banned
+
+    @property
     def use_condenser_api(self) -> bool:
         """Is we use only condenser API for node."""
         return self._use_condenser_api
@@ -83,15 +85,20 @@ class Node:
         self._banned = False
         self._available = True
 
+    def __repr__(self):
+        """Returns hostname."""
+        return self._hostname
+
 
 class NodesContainer:
     """Class for working with list of nodes."""
 
     def __init__(self, nodes_urls: List[str]):
         """Method gets list of nodes urls."""
-        self._nodes: Iterator[Node] = cycle([Node(url) for url in nodes_urls])
+        self._nodes: List[Node] = [Node(url) for url in nodes_urls]
+        self._nodes_cycle: Iterator[Node] = cycle(self._nodes)
         self._nodes_amount: int = len(nodes_urls)
-        self._current_node: Node = self.next_node()
+        self._current_node: Node = next(self._nodes_cycle)
 
     @property
     def cur_node(self) -> Node:
@@ -100,32 +107,30 @@ class NodesContainer:
 
     def lap(self) -> Generator:
         """Returns generator from all working nodes."""
-        yield self._current_node
+        if not self._working_nodes_exist():
+            self._reset_nodes()
 
         for _ in range(self._nodes_amount):
-            self._current_node = next(self._nodes)
-
-            if self._current_node.is_available and not self._current_node.is_banned:
+            if self._current_node.is_working:
                 yield self._current_node
 
-    def next_node(self) -> Node:
-        """Use moves_amount to avoid cycling by unavailable nodes (if each node is unavailable)."""
-        moves_amount = 0
+            self._current_node = next(self._nodes_cycle)
 
-        while moves_amount < self._nodes_amount:
-            node = next(self._nodes)
-            if not node.is_available or node.is_banned:
-                moves_amount += 1
-                continue
+    def _working_nodes_exist(self) -> bool:
+        """Do we have available and not banned nodes?
 
-            self._current_node = node
-            return self._current_node
+        Used for avoid situations when we don't have working nodes in list.
+        """
+        for node in self._nodes:
+            if node.is_working:
+                return True
 
-        self._reset_nodes()
-        return self.next_node()
+        return False
 
     def _reset_nodes(self):
-        """Make all nodes available and not banned."""
-        for _ in range(self._nodes_amount):
-            node = next(self._nodes)
+        """Make all nodes available and not banned.
+
+        Used when we have no working nodes in list.
+        """
+        for node in self._nodes:
             node.reset()
