@@ -225,4 +225,6 @@ class HttpClient(BaseClient):
                     'err': e,
                     'request': self.request
                 })
+                
+                self.next_node()
                 raise e
