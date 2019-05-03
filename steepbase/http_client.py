@@ -59,14 +59,12 @@ class HttpClient(BaseClient):
         json.decoder.JSONDecodeError,
     )
 
-    def __init__(self, nodes: List[str], **kwargs):
+    def __init__(self, nodes_urls: List[str], **kwargs):
         """Build pool manager and nodes iterator."""
         super().__init__()
 
-        # self.pool_manager: PoolManager = self._build_pool_manager(**kwargs)
         self.session = self._build_session(**kwargs)
-        self.nodes = NodesContainer(nodes_urls=nodes)
-        # self.request: Callable = partial(self.session.post, 'POST')
+        self.nodes = NodesContainer(nodes_urls=nodes_urls)
 
         log_level = kwargs.get('log_level', logging.INFO)
         logger.setLevel(log_level)
@@ -200,32 +198,6 @@ class HttpClient(BaseClient):
 
     def _build_session(self, **kwargs) -> Session:
         """Builds Pool manager according giver kwargs."""
-        # num_pools = kwargs.get('num_pools', 10)
-        # maxsize = kwargs.get('maxsize', 10)
-        # timeout = kwargs.get('timeout', 20)
-        # retries = kwargs.get('retries', 1)
-        # pool_block = kwargs.get('pool_block', False)
-        # tcp_keepalive = kwargs.get('tcp_keepalive', True)
-        #
-        # if tcp_keepalive:
-        #     socket_options = HTTPConnection.default_socket_options + \
-        #                      [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1), ]
-        # else:
-        #     socket_options = HTTPConnection.default_socket_options
-        #
-        # return PoolManager(
-        #     num_pools=num_pools,
-        #     maxsize=maxsize,
-        #     block=pool_block,
-        #     timeout=timeout,
-        #     retries=retries,
-        #     socket_options=socket_options,
-        #     headers={'Content-Type': 'application/json'},
-        #     cert_reqs='CERT_REQUIRED',
-        #     ca_certs=certifi.where(),
-        # )
-
         session = Session()
         session.headers.update({'Content-Type': 'application/json'})
-        # session.cert = certifi.where()
         return session
