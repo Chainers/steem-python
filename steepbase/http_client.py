@@ -64,8 +64,8 @@ class HttpClient(BaseClient):
         super().__init__()
 
         # self.pool_manager: PoolManager = self._build_pool_manager(**kwargs)
-        self.session: Session = self._build_session(**kwargs)
-        self.nodes: NodesContainer = NodesContainer(nodes_urls=nodes)
+        self.session = self._build_session(**kwargs)
+        self.nodes = NodesContainer(nodes_urls=nodes)
         # self.request: Callable = partial(self.session.post, 'POST')
 
         log_level = kwargs.get('log_level', logging.INFO)

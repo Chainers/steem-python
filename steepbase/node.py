@@ -95,10 +95,10 @@ class NodesContainer:
 
     def __init__(self, nodes_urls: List[str]):
         """Method gets list of nodes urls."""
-        self._nodes: List[Node] = [Node(url) for url in nodes_urls]
-        self._nodes_cycle: Iterator[Node] = cycle(self._nodes)
-        self._nodes_amount: int = len(nodes_urls)
-        self._current_node: Node = next(self._nodes_cycle)
+        self._nodes = [Node(url) for url in nodes_urls]
+        self._nodes_cycle = cycle(self._nodes)
+        self._nodes_amount = len(nodes_urls)
+        self._current_node = next(self._nodes_cycle)
 
     @property
     def cur_node(self) -> Node:
