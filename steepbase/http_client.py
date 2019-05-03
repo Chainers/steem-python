@@ -101,7 +101,7 @@ class HttpClient(BaseClient):
 
                 body = self.json_rpc_body(api_method, *args, **body_kwargs)
                 # response = self.request(node.url, body=body)
-                response = self.session.post(node.url, data=body)
+                response = self.session.post(node.url, data=body, timeout=20)
 
                 if response.status_code not in self.success_codes:
                     if response.status_code in self.ban_codes:
