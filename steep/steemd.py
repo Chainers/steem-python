@@ -888,7 +888,12 @@ class Steemd(Connector):
 
     def get_reblogged_by(self, author: str, permlink: str):
         """ get_reblogged_by """
-        return self.call('follow_api.get_reblogged_by', author, permlink, set_default_api=False)
+        # temporary fix for issue with get_reblogged_by
+        # TODO: get around it, avoid 'if' like this
+        if self.client.hostname in {'api.steemit.com', 'api.steem.house'}:
+            return self.call('follow_api.get_reblogged_by', author, permlink, set_default_api=False)
+        else:
+            return self.call('get_reblogged_by', author, permlink)
 
     def get_blog_authors(self, blog_account: str):
         """ get_blog_authors """
