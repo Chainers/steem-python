@@ -1,14 +1,10 @@
 import json
 import logging
-import socket
-from functools import partial
 from http.client import RemoteDisconnected
-from typing import List, Callable
+from typing import List
 
-import certifi
-from urllib3 import PoolManager
-from urllib3.connection import HTTPConnection
 from urllib3.exceptions import MaxRetryError, ReadTimeoutError, ProtocolError
+from requests import Session
 
 from steep.consts import CONDENSER_API
 from steepbase.base_client import BaseClient
@@ -67,12 +63,16 @@ class HttpClient(BaseClient):
         """Build pool manager and nodes iterator."""
         super().__init__()
 
-        self.pool_manager: PoolManager = self._build_pool_manager(**kwargs)
+        # self.pool_manager: PoolManager = self._build_pool_manager(**kwargs)
+        self.session: Session = self._build_session(**kwargs)
         self.nodes: NodesContainer = NodesContainer(nodes_urls=nodes)
-        self.request: Callable = partial(self.pool_manager.urlopen, 'POST')
+        # self.request: Callable = partial(self.session.post, 'POST')
 
         log_level = kwargs.get('log_level', logging.INFO)
         logger.setLevel(log_level)
+
+    def __del__(self):
+        self.session.close()
 
     @property
     def hostname(self) -> str:
@@ -100,22 +100,23 @@ class HttpClient(BaseClient):
                     body_kwargs['api'] = CONDENSER_API
 
                 body = self.json_rpc_body(api_method, *args, **body_kwargs)
-                response = self.request(node.url, body=body)
+                # response = self.request(node.url, body=body)
+                response = self.session.post(node.url, data=body)
 
-                if response.status not in self.success_codes:
-                    if response.status in self.ban_codes:
+                if response.status_code not in self.success_codes:
+                    if response.status_code in self.ban_codes:
                         node.set_banned()
-                    elif response.status in self.unavailability_codes:
+                    elif response.status_code in self.unavailability_codes:
                         node.set_unavailable()
 
                     raise RPCErrorRecoverable(
                         'non-200 response: {status} from {host}'.format(
-                            status=response.status,
+                            status=response.status_code,
                             host=node.hostname,
                         )
                     )
 
-                result = json.loads(response.data.decode('utf-8'))
+                result = json.loads(response.content.decode('utf-8'))
                 assert result, 'result entirely blank'
 
                 if 'error' in result:
@@ -167,7 +168,7 @@ class HttpClient(BaseClient):
                         exception=e.__class__.__name__,
                         details=e,
                     ),
-                    extra={'err': e, 'request': self.request},
+                    extra={'err': e},
                 )
 
         raise NumRetriesReached('No one node responds on method {method}'.format(method=api_method))
@@ -197,29 +198,34 @@ class HttpClient(BaseClient):
 
         return False
 
-    def _build_pool_manager(self, **kwargs) -> PoolManager:
+    def _build_session(self, **kwargs) -> Session:
         """Builds Pool manager according giver kwargs."""
-        num_pools = kwargs.get('num_pools', 10)
-        maxsize = kwargs.get('maxsize', 10)
-        timeout = kwargs.get('timeout', 20)
-        retries = kwargs.get('retries', 5)
-        pool_block = kwargs.get('pool_block', False)
-        tcp_keepalive = kwargs.get('tcp_keepalive', True)
+        # num_pools = kwargs.get('num_pools', 10)
+        # maxsize = kwargs.get('maxsize', 10)
+        # timeout = kwargs.get('timeout', 20)
+        # retries = kwargs.get('retries', 1)
+        # pool_block = kwargs.get('pool_block', False)
+        # tcp_keepalive = kwargs.get('tcp_keepalive', True)
+        #
+        # if tcp_keepalive:
+        #     socket_options = HTTPConnection.default_socket_options + \
+        #                      [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1), ]
+        # else:
+        #     socket_options = HTTPConnection.default_socket_options
+        #
+        # return PoolManager(
+        #     num_pools=num_pools,
+        #     maxsize=maxsize,
+        #     block=pool_block,
+        #     timeout=timeout,
+        #     retries=retries,
+        #     socket_options=socket_options,
+        #     headers={'Content-Type': 'application/json'},
+        #     cert_reqs='CERT_REQUIRED',
+        #     ca_certs=certifi.where(),
+        # )
 
-        if tcp_keepalive:
-            socket_options = HTTPConnection.default_socket_options + \
-                             [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1), ]
-        else:
-            socket_options = HTTPConnection.default_socket_options
-
-        return PoolManager(
-            num_pools=num_pools,
-            maxsize=maxsize,
-            block=pool_block,
-            timeout=timeout,
-            retries=retries,
-            socket_options=socket_options,
-            headers={'Content-Type': 'application/json'},
-            cert_reqs='CERT_REQUIRED',
-            ca_certs=certifi.where(),
-        )
+        session = Session()
+        session.headers.update({'Content-Type': 'application/json'})
+        # session.cert = certifi.where()
+        return session
