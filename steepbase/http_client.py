@@ -169,7 +169,7 @@ class HttpClient(BaseClient):
                     extra={'err': e},
                 )
 
-        raise NumRetriesReached('No one node responds on method {method}'.format(method=api_method))
+        raise RPCError('No one node responds on method {method}'.format(method=api_method))
 
     def _is_error_recoverable(self, error: dict) -> bool:
         """Checks if the error is recoverable."""
